@@ -6,16 +6,22 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'DMS Tətbiqi')</title>
     
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.bootstrap5.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     
     <style>
         :root {
@@ -52,7 +58,6 @@
             flex-direction: column;
         }
 
-        /* ── Navbar ── */
         .navbar {
             background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%) !important;
             border-bottom: none;
@@ -144,7 +149,6 @@
             margin: 0.25rem 0;
         }
 
-        /* ── Main Content ── */
         main {
             flex: 1;
             padding: 1.5rem 0;
@@ -171,7 +175,6 @@
             letter-spacing: -0.5px;
         }
 
-        /* ── Cards ── */
         .card {
             border: 1px solid var(--border);
             border-radius: var(--radius);
@@ -191,80 +194,6 @@
             padding: 1.25rem;
         }
 
-        /* ── Tables ── */
-        .table {
-            margin-bottom: 0;
-            font-size: 0.875rem;
-        }
-
-        .table thead th {
-            background: linear-gradient(135deg, var(--primary-dark), var(--primary));
-            color: #fff;
-            font-weight: 600;
-            font-size: 0.74rem;
-            text-transform: capitalize;
-            letter-spacing: 0.3px;
-            padding: 0.75rem 0.75rem;
-            border: none;
-            white-space: nowrap;
-        }
-
-        .table thead th:first-child {
-            border-radius: var(--radius-sm) 0 0 0;
-        }
-
-        .table thead th:last-child {
-            border-radius: 0 var(--radius-sm) 0 0;
-        }
-
-        .table tbody td {
-            padding: 0.75rem 1rem;
-            vertical-align: middle;
-            border-bottom: 1px solid var(--border);
-            color: var(--text-primary);
-        }
-
-        .table-hover tbody tr:hover {
-            background: rgba(0, 180, 216, 0.04);
-        }
-
-        .table-striped tbody tr:nth-of-type(odd) {
-            background-color: rgba(240, 244, 248, 0.5);
-        }
-
-        /* ── Banded header groups ── */
-        .table thead tr.band-header th {
-            text-align: center;
-            font-size: 0.72rem;
-            padding: 0.5rem 0.5rem;
-            border-left: 2px solid rgba(255,255,255,0.3);
-            border-right: 2px solid rgba(255,255,255,0.3);
-            text-transform: capitalize;
-        }
-        .table thead tr.band-header th:first-child { border-left: none; }
-        .table thead tr.band-header th:last-child { border-right: none; }
-        
-        .table thead tr.band-header .band-doc {
-            background: linear-gradient(135deg, #1e3a5f, #2a5298);
-        }
-        .table thead tr.band-header .band-task {
-            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
-        }
-        .table thead tr.band-header .band-executor {
-            background: linear-gradient(135deg, #059669, #10b981);
-        }
-        .table thead tr.band-header .band-execution {
-            background: linear-gradient(135deg, #d97706, #f59e0b);
-        }
-
-        .table thead tr.sub-header th {
-            font-size: 0.7rem;
-            padding: 0.5rem 0.5rem;
-            white-space: normal;
-            text-transform: capitalize;
-        }
-
-        /* ── Buttons ── */
         .btn {
             font-weight: 600;
             font-size: 0.85rem;
@@ -343,7 +272,6 @@
             font-size: 0.78rem;
         }
 
-        /* ── Action buttons in table ── */
         .action-btns {
             display: flex;
             gap: 4px;
@@ -360,7 +288,6 @@
             border-radius: 8px;
         }
 
-        /* ── Forms ── */
         .form-control, .form-select {
             border: 1.5px solid var(--border);
             border-radius: var(--radius-sm);
@@ -381,7 +308,6 @@
             margin-bottom: 0.35rem;
         }
 
-        /* ── Modals ── */
         .modal-content {
             border: none;
             border-radius: var(--radius);
@@ -413,7 +339,6 @@
             padding: 0.75rem 1.25rem;
         }
 
-        /* ── Alerts ── */
         .alert {
             border-radius: var(--radius-sm);
             border: none;
@@ -445,26 +370,6 @@
             border-left: 4px solid var(--accent);
         }
 
-        /* ── Pagination ── */
-        .pagination {
-            gap: 4px;
-        }
-
-        .page-link {
-            border-radius: var(--radius-sm) !important;
-            border: 1px solid var(--border);
-            color: var(--text-primary);
-            font-weight: 500;
-            font-size: 0.85rem;
-            padding: 0.4rem 0.75rem;
-        }
-
-        .page-item.active .page-link {
-            background: var(--primary);
-            border-color: var(--primary);
-        }
-
-        /* ── Filter Card ── */
         .filter-card .card-header {
             background: linear-gradient(135deg, rgba(0, 180, 216, 0.08), rgba(0, 180, 216, 0.02));
             cursor: pointer;
@@ -475,7 +380,26 @@
             color: var(--primary);
         }
 
-        /* ── Footer ── */
+        .filter-card .select2-container--bootstrap-5 .select2-selection {
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            min-height: 38px;
+            font-size: 0.875rem;
+        }
+        .filter-card .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            line-height: 36px;
+            padding-left: 0.75rem;
+        }
+        .filter-card .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+        .filter-card .select2-container--bootstrap-5.select2-container--open .select2-selection {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.15);
+        }
+
+        .flatpickr-input {
+            background: #fff !important;
+        }
+
         footer {
             background: var(--bg-card);
             border-top: 1px solid var(--border);
@@ -487,7 +411,6 @@
             font-weight: 500;
         }
 
-        /* ── Badge ── */
         .badge {
             font-weight: 600;
             font-size: 0.75rem;
@@ -495,21 +418,10 @@
             border-radius: 6px;
         }
 
-        /* ── Show modal table ── */
-        .detail-table th {
-            background: var(--bg-main);
-            font-weight: 600;
-            font-size: 0.82rem;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-        }
-
         .detail-table td {
             font-size: 0.9rem;
         }
 
-        /* ── Empty state ── */
         .empty-state {
             padding: 3rem 1rem;
             text-align: center;
@@ -522,7 +434,6 @@
             opacity: 0.3;
         }
 
-        /* ── Responsive ── */
         @media (max-width: 768px) {
             .page-header {
                 flex-direction: column;
@@ -535,7 +446,6 @@
             }
         }
 
-        /* ── Scrollbar ── */
         ::-webkit-scrollbar {
             width: 6px;
             height: 6px;
@@ -663,8 +573,26 @@
         </div>
     </footer>
 
+    <!-- jQuery (required for DataTables & Select2) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- DataTables JS + FixedColumns + Buttons -->
+    <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
+
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- Flatpickr JS + Azerbaijan locale -->
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/az.js"></script>
     
     <script>
         // Global CSRF token
@@ -707,6 +635,14 @@
                 const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
                 bsAlert.close();
             }, 4000);
+        });
+
+        // Global Select2 defaults
+        $.fn.select2.defaults.set('theme', 'bootstrap-5');
+        $.fn.select2.defaults.set('language', {
+            noResults: function() { return 'Nəticə tapılmadı'; },
+            searching: function() { return 'Axtarılır...'; },
+            removeAllItems: function() { return 'Hamısını sil'; }
         });
     </script>
     
