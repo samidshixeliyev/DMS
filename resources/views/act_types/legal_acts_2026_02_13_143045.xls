@@ -1,0 +1,74 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!--[if gte mso 9]>
+    <xml>
+        <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+                <x:ExcelWorksheet>
+                    <x:Name>Legal Acts</x:Name>
+                    <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+                </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+        </x:ExcelWorkbook>
+    </xml>
+    <![endif]-->
+    <style>
+        td, th { border: 1px solid #333; padding: 4px 8px; font-family: Arial; font-size: 10pt; vertical-align: top; }
+        th { background-color: #1e3a5f; color: #ffffff; font-weight: bold; text-align: center; }
+    </style>
+</head>
+<body>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Aktın Növü</th>
+                <th>Aktın Nömrəsi</th>
+                <th>Aktın Tarixi</th>
+                <th>Xülasə</th>
+                <th>Verən Orqan</th>
+                <th>İcraçı</th>
+                <th>Tapşırıq Nömrəsi</th>
+                <th>İcra Müddəti</th>
+                <th>İcra Qeydi</th>
+                <th>Əlaqəli Sənəd №</th>
+                <th>Əlaqəli Sənəd Tarixi</th>
+            </tr>
+        </thead>
+        <tbody><tr style="background-color:#FFFFCC">
+                <td>1</td>
+                <td>Qərar</td>
+                <td>2225</td>
+                <td>01.02.2026</td>
+                <td>TEst ziya</td>
+                <td>Samid Shikhaliyev</td>
+                <td>Rəşad Məmmədov</td>
+                <td>25017</td>
+                <td>16.02.2026 (3 gün qalıb)</td>
+                <td>İcra olunmayıb</td>
+                <td>15234</td>
+                <td>10.02.2026</td>
+            </tr><tr style="background-color:#FFCCCC">
+                <td>2</td>
+                <td>Qərar</td>
+                <td>2213</td>
+                <td>01.02.2026</td>
+                <td>fererdffsd  İlqar</td>
+                <td>Ziya Mehdiyev</td>
+                <td>Rəşad Məmmədov</td>
+                <td>12312</td>
+                <td>01.02.2026 (İcra müddəti bitib)</td>
+                <td>İcra olunmayıb</td>
+                <td>15234</td>
+                <td>10.02.2026</td>
+            </tr></tbody>
+    </table>
+    <br>
+    <table>
+        <tr><td><b>Cəmi: 2 qeyd</b></td></tr>
+        <tr><td>Hazırlanma tarixi: 13.02.2026 14:30</td></tr>
+    </table>
+</body>
+</html>

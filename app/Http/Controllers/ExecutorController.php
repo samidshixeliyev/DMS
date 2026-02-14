@@ -11,13 +11,8 @@ class ExecutorController extends Controller
     public function index()
     {
         $executors = Executor::with('department')->active()->paginate(20);
-        return view('executors.index', compact('executors'));
-    }
-
-    public function create()
-    {
         $departments = Department::active()->get();
-        return view('executors.create', compact('departments'));
+        return view('executors.index', compact('executors', 'departments'));
     }
 
     public function store(Request $request)
@@ -33,10 +28,28 @@ class ExecutorController extends Controller
         return redirect()->route('executors.index')->with('success', 'Executor created successfully.');
     }
 
+    public function show(Executor $executor)
+    {
+        $executor->load('department');
+        return response()->json([
+            'id' => $executor->id,
+            'name' => $executor->name,
+            'position' => $executor->position,
+            'department' => $executor->department?->name,
+            'created_at' => $executor->created_at?->format('d.m.Y H:i'),
+        ]);
+    }
+
     public function edit(Executor $executor)
     {
         $departments = Department::active()->get();
-        return view('executors.edit', compact('executor', 'departments'));
+        return response()->json([
+            'id' => $executor->id,
+            'name' => $executor->name,
+            'position' => $executor->position,
+            'department_id' => $executor->department_id,
+            'departments' => $departments,
+        ]);
     }
 
     public function update(Request $request, Executor $executor)

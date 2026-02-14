@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LegalActController;
 use App\Http\Controllers\ActTypeController;
 use App\Http\Controllers\IssuingAuthorityController;
@@ -8,34 +9,71 @@ use App\Http\Controllers\ExecutorController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\ExecutionNoteController;
 
-Route::get('/', function () {
-    return view('welcome');
+// ── Auth Routes ──
+Route::get('login', [AuthController::class, 'showLogin'])->name('login');
+Route::post('login', [AuthController::class, 'login'])->name('login.submit');
+Route::post('logout', [AuthController::class, 'logout'])->name('logout');
+
+// ── All protected routes require authentication ──
+Route::middleware('auth')->group(function () {
+
+    // Redirect root to legal acts
+    Route::get('/', fn() => redirect()->route('legal-acts.index'));
+
+    // ── Legal Acts ──
+    Route::get('legal-acts/export/excel', [LegalActController::class, 'exportExcel'])->name('legal-acts.export.excel');
+    Route::get('legal-acts/export/word', [LegalActController::class, 'exportWord'])->name('legal-acts.export.word');
+    Route::resource('legal-acts', LegalActController::class);
+
+    // ── Reference Data (admin & manager can create/edit/delete, all can view) ──
+    
+    // Act Types
+    Route::get('act-types', [ActTypeController::class, 'index'])->name('act-types.index');
+    Route::get('act-types/{actType}', [ActTypeController::class, 'show'])->name('act-types.show');
+    Route::get('act-types/{actType}/edit', [ActTypeController::class, 'edit'])->name('act-types.edit');
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::post('act-types', [ActTypeController::class, 'store'])->name('act-types.store');
+        Route::put('act-types/{actType}', [ActTypeController::class, 'update'])->name('act-types.update');
+        Route::delete('act-types/{actType}', [ActTypeController::class, 'destroy'])->name('act-types.destroy');
+    });
+
+    // Departments
+    Route::get('departments', [DepartmentController::class, 'index'])->name('departments.index');
+    Route::get('departments/{department}', [DepartmentController::class, 'show'])->name('departments.show');
+    Route::get('departments/{department}/edit', [DepartmentController::class, 'edit'])->name('departments.edit');
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::post('departments', [DepartmentController::class, 'store'])->name('departments.store');
+        Route::put('departments/{department}', [DepartmentController::class, 'update'])->name('departments.update');
+        Route::delete('departments/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
+    });
+
+    // Executors
+    Route::get('executors', [ExecutorController::class, 'index'])->name('executors.index');
+    Route::get('executors/{executor}', [ExecutorController::class, 'show'])->name('executors.show');
+    Route::get('executors/{executor}/edit', [ExecutorController::class, 'edit'])->name('executors.edit');
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::post('executors', [ExecutorController::class, 'store'])->name('executors.store');
+        Route::put('executors/{executor}', [ExecutorController::class, 'update'])->name('executors.update');
+        Route::delete('executors/{executor}', [ExecutorController::class, 'destroy'])->name('executors.destroy');
+    });
+
+    // Issuing Authorities
+    Route::get('issuing-authorities', [IssuingAuthorityController::class, 'index'])->name('issuing-authorities.index');
+    Route::get('issuing-authorities/{issuingAuthority}', [IssuingAuthorityController::class, 'show'])->name('issuing-authorities.show');
+    Route::get('issuing-authorities/{issuingAuthority}/edit', [IssuingAuthorityController::class, 'edit'])->name('issuing-authorities.edit');
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::post('issuing-authorities', [IssuingAuthorityController::class, 'store'])->name('issuing-authorities.store');
+        Route::put('issuing-authorities/{issuingAuthority}', [IssuingAuthorityController::class, 'update'])->name('issuing-authorities.update');
+        Route::delete('issuing-authorities/{issuingAuthority}', [IssuingAuthorityController::class, 'destroy'])->name('issuing-authorities.destroy');
+    });
+
+    // Execution Notes
+    Route::get('execution-notes', [ExecutionNoteController::class, 'index'])->name('execution-notes.index');
+    Route::get('execution-notes/{executionNote}', [ExecutionNoteController::class, 'show'])->name('execution-notes.show');
+    Route::get('execution-notes/{executionNote}/edit', [ExecutionNoteController::class, 'edit'])->name('execution-notes.edit');
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::post('execution-notes', [ExecutionNoteController::class, 'store'])->name('execution-notes.store');
+        Route::put('execution-notes/{executionNote}', [ExecutionNoteController::class, 'update'])->name('execution-notes.update');
+        Route::delete('execution-notes/{executionNote}', [ExecutionNoteController::class, 'destroy'])->name('execution-notes.destroy');
+    });
 });
-
-// Legal Acts Routes - Export routes BEFORE resource routes
-Route::get('legal-acts/export/excel', [LegalActController::class, 'exportExcel'])->name('legal-acts.export.excel');
-Route::get('legal-acts/export/word', [LegalActController::class, 'exportWord'])->name('legal-acts.export.word');
-Route::resource('legal-acts', LegalActController::class);
-
-// Act Types Routes
-Route::resource('act-types', ActTypeController::class);
-
-// Departments Routes
-Route::resource('departments', DepartmentController::class);
-
-// Executors Routes
-Route::resource('executors', ExecutorController::class);
-
-// Issuing Authorities Routes
-Route::resource('issuing-authorities', IssuingAuthorityController::class);
-
-// Execution Notes Routes
-Route::resource('execution-notes', ExecutionNoteController::class);
-
-// Logout route (if using default Laravel auth)
-Route::post('logout', function () {
-    auth()->logout();
-    request()->session()->invalidate();
-    request()->session()->regenerateToken();
-    return redirect('/');
-})->name('logout');

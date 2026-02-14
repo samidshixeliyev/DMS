@@ -13,11 +13,6 @@ class DepartmentController extends Controller
         return view('departments.index', compact('departments'));
     }
 
-    public function create()
-    {
-        return view('departments.create');
-    }
-
     public function store(Request $request)
     {
         $validated = $request->validate(['name' => 'required|string|max:255']);
@@ -25,9 +20,21 @@ class DepartmentController extends Controller
         return redirect()->route('departments.index')->with('success', 'Department created successfully.');
     }
 
+    public function show(Department $department)
+    {
+        return response()->json([
+            'id' => $department->id,
+            'name' => $department->name,
+            'created_at' => $department->created_at?->format('d.m.Y H:i'),
+        ]);
+    }
+
     public function edit(Department $department)
     {
-        return view('departments.edit', compact('department'));
+        return response()->json([
+            'id' => $department->id,
+            'name' => $department->name,
+        ]);
     }
 
     public function update(Request $request, Department $department)

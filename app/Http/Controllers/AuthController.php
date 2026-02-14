@@ -1,0 +1,43 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+class AuthController extends Controller
+{
+    public function showLogin()
+    {
+        if (Auth::check()) {
+            return redirect()->route('legal-acts.index');
+        }
+        return view('auth.login');
+    }
+
+    public function login(Request $request)
+    {
+        $credentials = $request->validate([
+            'username' => 'required|string',
+            'password' => 'required|string',
+        ]);
+
+        // Only allow active users
+        if (Auth::attempt(array_merge($credentials, ['is_deleted' => false]), $request->boolean('remember'))) {
+            $request->session()->regenerate();
+            return redirect()->intended(route('legal-acts.index'));
+        }
+
+        return back()->withErrors([
+            'username' => 'İstifadəçi adı və ya şifrə yanlışdır.',
+        ])->onlyInput('username');
+    }
+
+    public function logout(Request $request)
+    {
+        Auth::logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return redirect()->route('login');
+    }
+}

@@ -2,79 +2,12 @@
 
 namespace App\Services;
 
-use PhpOffice\PhpWord\PhpWord;
-use PhpOffice\PhpWord\IOFactory;
-use PhpOffice\PhpWord\Style\Font;
-
 class LegalActWordExportService
 {
     public function export($legalActs, $filename = 'legal_acts.docx')
     {
-        $phpWord = new PhpWord();
-        
-        // Add document properties
-        $properties = $phpWord->getDocInfo();
-        $properties->setCreator('DMS Application');
-        $properties->setTitle('Legal Acts Report');
-        
-        // Create section
-        $section = $phpWord->addSection();
-        
-        // Add title
-        $section->addText(
-            'Legal Acts Report',
-            ['name' => 'Arial', 'size' => 16, 'bold' => true],
-            ['alignment' => 'center']
-        );
-        
-        $section->addTextBreak(1);
-        
-        // Add date
-        $section->addText(
-            'Generated: ' . now()->format('Y-m-d H:i:s'),
-            ['name' => 'Arial', 'size' => 10],
-            ['alignment' => 'right']
-        );
-        
-        $section->addTextBreak(1);
-        
-        // Add table
-        $table = $section->addTable([
-            'borderSize' => 6,
-            'borderColor' => '000000',
-            'width' => 100 * 50,
-            'unit' => 'pct'
-        ]);
-        
-        // Add header row
-        $table->addRow(400);
-        $table->addCell(1000)->addText('ID', ['bold' => true]);
-        $table->addCell(2000)->addText('Document Number', ['bold' => true]);
-        $table->addCell(2000)->addText('Document Date', ['bold' => true]);
-        $table->addCell(4000)->addText('Title', ['bold' => true]);
-        $table->addCell(2500)->addText('Issuing Authority', ['bold' => true]);
-        $table->addCell(2000)->addText('Executor', ['bold' => true]);
-        $table->addCell(2000)->addText('Category', ['bold' => true]);
-        $table->addCell(1500)->addText('Status', ['bold' => true]);
-        
-        // Add data rows
-        foreach ($legalActs as $legalAct) {
-            $table->addRow();
-            $table->addCell(1000)->addText($legalAct->id);
-            $table->addCell(2000)->addText($legalAct->document_number ?? '-');
-            $table->addCell(2000)->addText($legalAct->document_date?->format('Y-m-d') ?? '-');
-            $table->addCell(4000)->addText($legalAct->title ?? '-');
-            $table->addCell(2500)->addText($legalAct->issuingAuthority?->name ?? '-');
-            $table->addCell(2000)->addText($legalAct->executor?->name ?? '-');
-            $table->addCell(2000)->addText($legalAct->category?->name ?? '-');
-            $table->addCell(1500)->addText($legalAct->status?->name ?? '-');
-        }
-        
-        $section->addTextBreak(2);
-        $section->addText(
-            'Total Records: ' . $legalActs->count(),
-            ['bold' => true]
-        );
+        // Use HTML-based Word document (works without ZipArchive extension)
+        $html = $this->generateHtml($legalActs);
         
         // Save to temp file
         $tempFile = storage_path('app/temp/' . $filename);
@@ -84,9 +17,154 @@ class LegalActWordExportService
             mkdir(storage_path('app/temp'), 0755, true);
         }
         
-        $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
-        $objWriter->save($tempFile);
+        // Write as .doc (HTML format that Word can open)
+        file_put_contents($tempFile, $html);
         
         return $tempFile;
+    }
+
+    protected function generateHtml($legalActs)
+    {
+        $date = now()->format('d.m.Y H:i');
+        $count = $legalActs->count();
+        
+        $rows = '';
+        $i = 1;
+        foreach ($legalActs as $act) {
+            $actType = e($act->actType?->name ?? '-');
+            $actNumber = e($act->legal_act_number ?? '-');
+            $actDate = $act->legal_act_date?->format('d.m.Y') ?? '-';
+            $summary = e($act->summary ?? '-');
+            $authority = e($act->issuingAuthority?->name ?? '-');
+            $executor = e($act->executor?->name ?? '-');
+            $taskNumber = e($act->task_number ?? '-');
+            $taskDesc = e($act->task_description ?? '-');
+            $deadline = $act->execution_deadline?->format('d.m.Y') ?? '-';
+            $note = e($act->executionNote?->note ?? '-');
+            $relDocNum = e($act->related_document_number ?? '-');
+            $relDocDate = $act->related_document_date?->format('d.m.Y') ?? '-';
+            
+            // Row color based on deadline and execution status
+            $rowStyle = '';
+            $noteText = $act->executionNote?->note ?? '';
+            $isExecuted = $noteText && mb_stripos($noteText, 'İcra olunub') !== false;
+            
+            if (!$isExecuted && $act->execution_deadline) {
+                $daysLeft = (int) now()->startOfDay()->diffInDays($act->execution_deadline->startOfDay(), false);
+                if ($daysLeft < 0) {
+                    $rowStyle = ' style="background-color: #FFCCCC;"'; // Red - overdue
+                } elseif ($daysLeft <= 3) {
+                    $rowStyle = ' style="background-color: #FFFFCC;"'; // Yellow - 3 days left
+                }
+            }
+            
+            $rows .= "
+            <tr{$rowStyle}>
+                <td>{$i}</td>
+                <td>{$actType}</td>
+                <td>{$actNumber}</td>
+                <td>{$actDate}</td>
+                <td>{$summary}</td>
+                <td>{$authority}</td>
+                <td>{$executor}</td>
+                <td>{$taskNumber}</td>
+                <td>{$deadline}</td>
+                <td>{$note}</td>
+                <td>{$relDocNum}</td>
+                <td>{$relDocDate}</td>
+            </tr>";
+            $i++;
+        }
+
+        return <<<HTML
+<html xmlns:o="urn:schemas-microsoft-com:office:office"
+      xmlns:w="urn:schemas-microsoft-com:office:word"
+      xmlns="http://www.w3.org/TR/REC-html40">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <!--[if gte mso 9]>
+    <xml>
+        <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+        </w:WordDocument>
+    </xml>
+    <![endif]-->
+    <style>
+        @page {
+            size: landscape;
+            margin: 1cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+        }
+        h1 {
+            text-align: center;
+            font-size: 16pt;
+            margin-bottom: 5px;
+        }
+        .meta {
+            text-align: right;
+            font-size: 9pt;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 4px 6px;
+            vertical-align: top;
+        }
+        th {
+            background-color: #1e3a5f;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+            font-size: 8pt;
+        }
+        .total {
+            margin-top: 10px;
+            font-weight: bold;
+            font-size: 10pt;
+        }
+    </style>
+</head>
+<body>
+    <h1>Legal Acts Report</h1>
+    <div class="meta">Generated: {$date}</div>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Sənədin növü</th>
+                <th>Sənədin nömrəsi</th>
+                <th>Sənədin tarixi</th>
+                <th>Summary</th>
+                <th>Issuing Authority</th>
+                <th>Executor</th>
+                <th>Task Number</th>
+                <th>Deadline</th>
+                <th>Execution Note</th>
+                <th>Related Doc #</th>
+                <th>Related Doc Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {$rows}
+        </tbody>
+    </table>
+    
+    <div class="total">Total Records: {$count}</div>
+</body>
+</html>
+HTML;
     }
 }

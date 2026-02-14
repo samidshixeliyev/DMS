@@ -13,11 +13,6 @@ class ExecutionNoteController extends Controller
         return view('execution_notes.index', compact('executionNotes'));
     }
 
-    public function create()
-    {
-        return view('execution_notes.create');
-    }
-
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -29,9 +24,21 @@ class ExecutionNoteController extends Controller
         return redirect()->route('execution-notes.index')->with('success', 'Execution Note created successfully.');
     }
 
+    public function show(ExecutionNote $executionNote)
+    {
+        return response()->json([
+            'id' => $executionNote->id,
+            'note' => $executionNote->note,
+            'created_at' => $executionNote->created_at?->format('d.m.Y H:i'),
+        ]);
+    }
+
     public function edit(ExecutionNote $executionNote)
     {
-        return view('execution_notes.edit', compact('executionNote'));
+        return response()->json([
+            'id' => $executionNote->id,
+            'note' => $executionNote->note,
+        ]);
     }
 
     public function update(Request $request, ExecutionNote $executionNote)
