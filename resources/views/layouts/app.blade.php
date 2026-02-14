@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="az">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'DMS Application')</title>
+    <title>@yield('title', 'DMS Tətbiqi')</title>
     
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -88,17 +88,30 @@
         .navbar .nav-link {
             color: rgba(255,255,255,0.8) !important;
             font-weight: 500;
-            font-size: 0.875rem;
-            padding: 0.5rem 1rem !important;
+            font-size: 0.85rem;
+            padding: 0.5rem 0.75rem !important;
             border-radius: var(--radius-sm);
             transition: all 0.2s ease;
-            margin: 0 2px;
+            margin: 0 1px;
+            white-space: nowrap;
         }
 
         .navbar .nav-link:hover,
         .navbar .nav-link.active {
             color: #fff !important;
             background: rgba(255,255,255,0.12);
+        }
+
+        .navbar .nav-link i {
+            font-size: 0.9rem;
+        }
+
+        .nav-separator {
+            color: rgba(255,255,255,0.25);
+            display: flex;
+            align-items: center;
+            padding: 0 0.25rem;
+            font-size: 1.2rem;
         }
 
         .navbar .dropdown-menu {
@@ -138,8 +151,8 @@
         }
 
         .container-fluid {
-            max-width: 1400px;
-            padding: 0 1.5rem;
+            max-width: 100%;
+            padding: 0 1rem;
         }
 
         /* ── Page Header ── */
@@ -188,10 +201,10 @@
             background: linear-gradient(135deg, var(--primary-dark), var(--primary));
             color: #fff;
             font-weight: 600;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            padding: 0.75rem 1rem;
+            font-size: 0.74rem;
+            text-transform: capitalize;
+            letter-spacing: 0.3px;
+            padding: 0.75rem 0.75rem;
             border: none;
             white-space: nowrap;
         }
@@ -217,6 +230,38 @@
 
         .table-striped tbody tr:nth-of-type(odd) {
             background-color: rgba(240, 244, 248, 0.5);
+        }
+
+        /* ── Banded header groups ── */
+        .table thead tr.band-header th {
+            text-align: center;
+            font-size: 0.72rem;
+            padding: 0.5rem 0.5rem;
+            border-left: 2px solid rgba(255,255,255,0.3);
+            border-right: 2px solid rgba(255,255,255,0.3);
+            text-transform: capitalize;
+        }
+        .table thead tr.band-header th:first-child { border-left: none; }
+        .table thead tr.band-header th:last-child { border-right: none; }
+        
+        .table thead tr.band-header .band-doc {
+            background: linear-gradient(135deg, #1e3a5f, #2a5298);
+        }
+        .table thead tr.band-header .band-task {
+            background: linear-gradient(135deg, #7c3aed, #8b5cf6);
+        }
+        .table thead tr.band-header .band-executor {
+            background: linear-gradient(135deg, #059669, #10b981);
+        }
+        .table thead tr.band-header .band-execution {
+            background: linear-gradient(135deg, #d97706, #f59e0b);
+        }
+
+        .table thead tr.sub-header th {
+            font-size: 0.7rem;
+            padding: 0.5rem 0.5rem;
+            white-space: normal;
+            text-transform: capitalize;
         }
 
         /* ── Buttons ── */
@@ -296,10 +341,6 @@
         .btn-sm {
             padding: 0.3rem 0.6rem;
             font-size: 0.78rem;
-        }
-
-        .btn-group-actions .btn {
-            margin: 0 2px;
         }
 
         /* ── Action buttons in table ── */
@@ -481,24 +522,6 @@
             opacity: 0.3;
         }
 
-        /* ── Loading spinner ── */
-        .spinner-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255,255,255,0.7);
-            z-index: 9999;
-            justify-content: center;
-            align-items: center;
-        }
-
-        .spinner-overlay.active {
-            display: flex;
-        }
-
         /* ── Responsive ── */
         @media (max-width: 768px) {
             .page-header {
@@ -550,49 +573,49 @@
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('legal-acts.*') ? 'active' : '' }}" 
                            href="{{ route('legal-acts.index') }}">
-                            <i class="bi bi-file-text me-1"></i> Legal Acts
+                            <i class="bi bi-file-text me-1"></i> Hüquqi Aktlar
                         </a>
                     </li>
-                    
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-grid me-1"></i> Reference Data
+                    <li class="nav-separator">|</li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('act-types.*') ? 'active' : '' }}" 
+                           href="{{ route('act-types.index') }}">
+                            <i class="bi bi-bookmark me-1"></i> Sənəd növləri
                         </a>
-                        <ul class="dropdown-menu">
-                            <li>
-                                <a class="dropdown-item {{ request()->routeIs('act-types.*') ? 'active' : '' }}" 
-                                   href="{{ route('act-types.index') }}">
-                                    <i class="bi bi-bookmark"></i> Sənədin növü
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item {{ request()->routeIs('issuing-authorities.*') ? 'active' : '' }}" 
-                                   href="{{ route('issuing-authorities.index') }}">
-                                    <i class="bi bi-building-check"></i> Issuing Authorities
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <a class="dropdown-item {{ request()->routeIs('departments.*') ? 'active' : '' }}" 
-                                   href="{{ route('departments.index') }}">
-                                    <i class="bi bi-diagram-3"></i> Departments
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item {{ request()->routeIs('executors.*') ? 'active' : '' }}" 
-                                   href="{{ route('executors.index') }}">
-                                    <i class="bi bi-people"></i> Executors
-                                </a>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <a class="dropdown-item {{ request()->routeIs('execution-notes.*') ? 'active' : '' }}" 
-                                   href="{{ route('execution-notes.index') }}">
-                                    <i class="bi bi-sticky"></i> Execution Notes
-                                </a>
-                            </li>
-                        </ul>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('issuing-authorities.*') ? 'active' : '' }}" 
+                           href="{{ route('issuing-authorities.index') }}">
+                            <i class="bi bi-building-check me-1"></i> Verən orqanlar
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('departments.*') ? 'active' : '' }}" 
+                           href="{{ route('departments.index') }}">
+                            <i class="bi bi-diagram-3 me-1"></i> Şöbələr
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('executors.*') ? 'active' : '' }}" 
+                           href="{{ route('executors.index') }}">
+                            <i class="bi bi-people me-1"></i> İcraçılar
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('execution-notes.*') ? 'active' : '' }}" 
+                           href="{{ route('execution-notes.index') }}">
+                            <i class="bi bi-sticky me-1"></i> İcra qeydləri
+                        </a>
+                    </li>
+                    @if(auth()->user()->user_role === 'admin')
+                    <li class="nav-separator">|</li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" 
+                           href="{{ route('users.index') }}">
+                            <i class="bi bi-person-gear me-1"></i> İstifadəçilər
+                        </a>
+                    </li>
+                    @endif
                 </ul>
                 
                 <ul class="navbar-nav">
@@ -606,7 +629,7 @@
                             <li class="px-3 py-2">
                                 <small class="text-muted d-block">Rol</small>
                                 <span class="badge {{ auth()->user()->user_role === 'admin' ? 'bg-danger' : (auth()->user()->user_role === 'manager' ? 'bg-primary' : 'bg-secondary') }}">
-                                    {{ ucfirst(auth()->user()->user_role) }}
+                                    {{ auth()->user()->user_role === 'admin' ? 'Admin' : (auth()->user()->user_role === 'manager' ? 'Menecer' : 'İstifadəçi') }}
                                 </span>
                             </li>
                             <li><hr class="dropdown-divider"></li>
@@ -636,7 +659,7 @@
     <!-- Footer -->
     <footer>
         <div class="text-center p-3 text-muted">
-            &copy; {{ date('Y') }} DMS &mdash; Document Management System
+            &copy; {{ date('Y') }} DMS &mdash; Sənəd İdarəetmə Sistemi
         </div>
     </footer>
 

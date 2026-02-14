@@ -40,7 +40,12 @@ class LegalActController extends Controller
             $query->where('legal_act_date', '<=', $request->legal_act_date_to);
         }
 
-        $legalActs = $query->orderBy('id', 'desc')->paginate(20)->appends($request->query());
+        // Adjustable pagination
+        $perPage = in_array((int) $request->input('per_page'), [10, 20, 50, 100]) 
+            ? (int) $request->input('per_page') 
+            : 20;
+
+        $legalActs = $query->orderBy('id', 'desc')->paginate($perPage)->appends($request->query());
 
         $actTypes = ActType::active()->get();
         $issuingAuthorities = IssuingAuthority::active()->get();
@@ -48,13 +53,13 @@ class LegalActController extends Controller
         $executionNotes = ExecutionNote::active()->get();
 
         return view('legal_acts.index', compact(
-            'legalActs', 'actTypes', 'issuingAuthorities', 'executors', 'executionNotes'
+            'legalActs', 'actTypes', 'issuingAuthorities', 'executors', 'executionNotes', 'perPage'
         ));
     }
 
     public function store(Request $request)
     {
-        // Only admin and manager can create
+        // Route middleware already checks role, but double-check
         if (!in_array(auth()->user()->user_role, ['admin', 'manager'])) {
             abort(403, 'Sizin bu əməliyyat üçün icazəniz yoxdur.');
         }

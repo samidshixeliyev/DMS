@@ -8,6 +8,7 @@ use App\Http\Controllers\IssuingAuthorityController;
 use App\Http\Controllers\ExecutorController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\ExecutionNoteController;
+use App\Http\Controllers\UserController;
 
 // ── Auth Routes ──
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
@@ -75,5 +76,15 @@ Route::middleware('auth')->group(function () {
         Route::post('execution-notes', [ExecutionNoteController::class, 'store'])->name('execution-notes.store');
         Route::put('execution-notes/{executionNote}', [ExecutionNoteController::class, 'update'])->name('execution-notes.update');
         Route::delete('execution-notes/{executionNote}', [ExecutionNoteController::class, 'destroy'])->name('execution-notes.destroy');
+    });
+
+    // ── User Management (admin only) ──
+    Route::middleware('role:admin')->group(function () {
+        Route::get('users', [UserController::class, 'index'])->name('users.index');
+        Route::post('users', [UserController::class, 'store'])->name('users.store');
+        Route::get('users/{user}', [UserController::class, 'show'])->name('users.show');
+        Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     });
 });

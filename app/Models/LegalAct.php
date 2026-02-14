@@ -63,4 +63,9 @@ class LegalAct extends Model
     {
         return $this->belongsTo(ExecutionNote::class);
     }
+
+    public function insertedUser()
+    {
+        return $this->belongsTo(User::class, 'inserted_user_id');
+    }
 }
