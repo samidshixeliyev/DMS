@@ -21,7 +21,7 @@ Route::middleware('auth')->group(function () {
     // Redirect root to legal acts
     Route::get('/', fn() => redirect()->route('legal-acts.index'));
 
-    // ── Legal Acts ──
+    // ── Legal Acts (all authenticated users can view and create) ──
     Route::get('legal-acts/export/excel', [LegalActController::class, 'exportExcel'])->name('legal-acts.export.excel');
     Route::get('legal-acts/export/word', [LegalActController::class, 'exportWord'])->name('legal-acts.export.word');
     Route::resource('legal-acts', LegalActController::class);

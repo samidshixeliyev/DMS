@@ -15,7 +15,7 @@ class LegalActController extends Controller
 {
     public function index(Request $request)
     {
-        $query = LegalAct::with(['actType', 'issuingAuthority', 'executor', 'executionNote'])
+        $query = LegalAct::with(['actType', 'issuingAuthority', 'executor', 'executionNote', 'insertedUser'])
             ->active();
 
         if ($request->filled('legal_act_number')) {
@@ -59,11 +59,6 @@ class LegalActController extends Controller
 
     public function store(Request $request)
     {
-        // Route middleware already checks role, but double-check
-        if (!in_array(auth()->user()->user_role, ['admin', 'manager'])) {
-            abort(403, 'Sizin bu əməliyyat üçün icazəniz yoxdur.');
-        }
-
         $validated = $request->validate([
             'act_type_id' => 'required|exists:act_types,id',
             'issued_by_id' => 'required|exists:issuing_authorities,id',
@@ -88,7 +83,7 @@ class LegalActController extends Controller
 
     public function show(LegalAct $legalAct)
     {
-        $legalAct->load(['actType', 'issuingAuthority', 'executor.department', 'executionNote']);
+        $legalAct->load(['actType', 'issuingAuthority', 'executor.department', 'executionNote', 'insertedUser']);
 
         return response()->json([
             'id' => $legalAct->id,
@@ -106,6 +101,7 @@ class LegalActController extends Controller
             'execution_deadline' => $legalAct->execution_deadline?->format('d.m.Y'),
             'related_document_number' => $legalAct->related_document_number,
             'related_document_date' => $legalAct->related_document_date?->format('d.m.Y'),
+            'inserted_user' => $legalAct->insertedUser ? $legalAct->insertedUser->name . ' ' . $legalAct->insertedUser->surname : null,
             'created_at' => $legalAct->created_at?->format('d.m.Y H:i'),
         ]);
     }
@@ -135,7 +131,7 @@ class LegalActController extends Controller
 
     public function update(Request $request, LegalAct $legalAct)
     {
-        if (!in_array(auth()->user()->user_role, ['admin', 'manager'])) {
+        if (!in_array(auth()->user()->user_role, ['admin', 'manager']) && auth()->id() !== $legalAct->inserted_user_id) {
             abort(403, 'Sizin bu əməliyyat üçün icazəniz yoxdur.');
         }
 
