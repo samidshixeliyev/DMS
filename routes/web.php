@@ -10,25 +10,19 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\ExecutionNoteController;
 use App\Http\Controllers\UserController;
 
-// ── Auth Routes ──
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('login', [AuthController::class, 'login'])->name('login.submit');
 Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
-// ── All protected routes require authentication ──
 Route::middleware('auth')->group(function () {
 
-    // Redirect root to legal acts
     Route::get('/', fn() => redirect()->route('legal-acts.index'));
 
-    // ── Legal Acts (all authenticated users can view and create) ──
+    Route::post('legal-acts/load', [LegalActController::class, 'load'])->name('legal-acts.load');
     Route::get('legal-acts/export/excel', [LegalActController::class, 'exportExcel'])->name('legal-acts.export.excel');
     Route::get('legal-acts/export/word', [LegalActController::class, 'exportWord'])->name('legal-acts.export.word');
     Route::resource('legal-acts', LegalActController::class);
 
-    // ── Reference Data (admin & manager can create/edit/delete, all can view) ──
-    
-    // Act Types
     Route::get('act-types', [ActTypeController::class, 'index'])->name('act-types.index');
     Route::get('act-types/{actType}', [ActTypeController::class, 'show'])->name('act-types.show');
     Route::get('act-types/{actType}/edit', [ActTypeController::class, 'edit'])->name('act-types.edit');
@@ -38,7 +32,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('act-types/{actType}', [ActTypeController::class, 'destroy'])->name('act-types.destroy');
     });
 
-    // Departments
     Route::get('departments', [DepartmentController::class, 'index'])->name('departments.index');
     Route::get('departments/{department}', [DepartmentController::class, 'show'])->name('departments.show');
     Route::get('departments/{department}/edit', [DepartmentController::class, 'edit'])->name('departments.edit');
@@ -48,7 +41,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('departments/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy');
     });
 
-    // Executors
     Route::get('executors', [ExecutorController::class, 'index'])->name('executors.index');
     Route::get('executors/{executor}', [ExecutorController::class, 'show'])->name('executors.show');
     Route::get('executors/{executor}/edit', [ExecutorController::class, 'edit'])->name('executors.edit');
@@ -58,7 +50,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('executors/{executor}', [ExecutorController::class, 'destroy'])->name('executors.destroy');
     });
 
-    // Issuing Authorities
     Route::get('issuing-authorities', [IssuingAuthorityController::class, 'index'])->name('issuing-authorities.index');
     Route::get('issuing-authorities/{issuingAuthority}', [IssuingAuthorityController::class, 'show'])->name('issuing-authorities.show');
     Route::get('issuing-authorities/{issuingAuthority}/edit', [IssuingAuthorityController::class, 'edit'])->name('issuing-authorities.edit');
@@ -68,7 +59,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('issuing-authorities/{issuingAuthority}', [IssuingAuthorityController::class, 'destroy'])->name('issuing-authorities.destroy');
     });
 
-    // Execution Notes
     Route::get('execution-notes', [ExecutionNoteController::class, 'index'])->name('execution-notes.index');
     Route::get('execution-notes/{executionNote}', [ExecutionNoteController::class, 'show'])->name('execution-notes.show');
     Route::get('execution-notes/{executionNote}/edit', [ExecutionNoteController::class, 'edit'])->name('execution-notes.edit');
@@ -78,7 +68,6 @@ Route::middleware('auth')->group(function () {
         Route::delete('execution-notes/{executionNote}', [ExecutionNoteController::class, 'destroy'])->name('execution-notes.destroy');
     });
 
-    // ── User Management (admin only) ──
     Route::middleware('role:admin')->group(function () {
         Route::get('users', [UserController::class, 'index'])->name('users.index');
         Route::post('users', [UserController::class, 'store'])->name('users.store');

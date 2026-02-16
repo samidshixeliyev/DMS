@@ -7,54 +7,149 @@ use App\Models\ActType;
 use App\Models\IssuingAuthority;
 use App\Models\Executor;
 use App\Models\ExecutionNote;
+use App\Models\Department;
 use App\Exports\LegalActsExport;
 use App\Services\LegalActWordExportService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class LegalActController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $query = LegalAct::with(['actType', 'issuingAuthority', 'executor', 'executionNote', 'insertedUser'])
-            ->active();
-
-        if ($request->filled('legal_act_number')) {
-            $query->where('legal_act_number', 'like', '%' . $request->legal_act_number . '%');
-        }
-        if ($request->filled('summary')) {
-            $query->where('summary', 'like', '%' . $request->summary . '%');
-        }
-        if ($request->filled('act_type_id')) {
-            $query->where('act_type_id', $request->act_type_id);
-        }
-        if ($request->filled('issued_by_id')) {
-            $query->where('issued_by_id', $request->issued_by_id);
-        }
-        if ($request->filled('executor_id')) {
-            $query->where('executor_id', $request->executor_id);
-        }
-        if ($request->filled('legal_act_date_from')) {
-            $query->where('legal_act_date', '>=', $request->legal_act_date_from);
-        }
-        if ($request->filled('legal_act_date_to')) {
-            $query->where('legal_act_date', '<=', $request->legal_act_date_to);
-        }
-
-        // Adjustable pagination
-        $perPage = in_array((int) $request->input('per_page'), [10, 20, 50, 100]) 
-            ? (int) $request->input('per_page') 
-            : 20;
-
-        $legalActs = $query->orderBy('id', 'desc')->paginate($perPage)->appends($request->query());
-
         $actTypes = ActType::active()->get();
         $issuingAuthorities = IssuingAuthority::active()->get();
         $executors = Executor::with('department')->active()->get();
         $executionNotes = ExecutionNote::active()->get();
+        $departments = Department::active()->get();
+        $canManage = in_array(auth()->user()->user_role, ['admin', 'manager']);
+        $isAdmin = auth()->user()->user_role === 'admin';
 
         return view('legal_acts.index', compact(
-            'legalActs', 'actTypes', 'issuingAuthorities', 'executors', 'executionNotes', 'perPage'
+            'actTypes',
+            'issuingAuthorities',
+            'executors',
+            'executionNotes',
+            'departments',
+            'canManage',
+            'isAdmin'
         ));
+    }
+
+    public function load(Request $request)
+    {
+        $draw = $request->input('draw', 1);
+        $start = $request->input('start', 0);
+        $length = $request->input('length', 25);
+
+        $totalQuery = LegalAct::active();
+        $totalRecords = (clone $totalQuery)->count();
+
+        $query = $this->applyFilters($request);
+        $filteredRecords = (clone $query)->count();
+
+        $orderCol = (int) $request->input('order.0.column', 3);
+        $orderDir = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
+
+        switch ($orderCol) {
+            case 1:
+                $query->orderBy('legal_act_number', $orderDir);
+                break;
+            case 2:
+                $query->orderBy('legal_act_date', $orderDir);
+                break;
+            case 5:
+                $query->orderBy('task_number', $orderDir);
+                break;
+            case 9:
+                $query->orderBy('execution_deadline', $orderDir);
+                break;
+            case 11:
+                $query->orderBy('related_document_number', $orderDir);
+                break;
+            case 12:
+                $query->orderBy('related_document_date', $orderDir);
+                break;
+            default:
+                $query->orderBy('id', 'desc');
+                break;
+        }
+
+        $results = $query->skip($start)->take($length)->get();
+
+        $userId = auth()->id();
+        $userRole = auth()->user()->user_role;
+        $canManage = in_array($userRole, ['admin', 'manager']);
+        $isAdmin = $userRole === 'admin';
+
+        $data = [];
+        foreach ($results as $i => $act) {
+            $noteText = $act->executionNote?->note ?? '';
+            $isExecuted = $noteText && mb_stripos($noteText, 'İcra olunub') !== false;
+            $daysLeft = null;
+            $rowClass = '';
+
+            if ($isExecuted) {
+                $rowClass = 'row-executed';
+            } elseif ($act->execution_deadline) {
+                $daysLeft = (int) now()->startOfDay()->diffInDays($act->execution_deadline->startOfDay(), false);
+                if ($daysLeft < 0) {
+                    $rowClass = 'row-overdue';
+                } elseif ($daysLeft <= 3) {
+                    $rowClass = 'row-warning';
+                }
+            }
+
+            $deadlineHtml = '-';
+            if ($act->execution_deadline) {
+                $deadlineHtml = $act->execution_deadline->format('d.m.Y');
+                if (!$isExecuted) {
+                    if ($daysLeft !== null && $daysLeft < 0) {
+                        $deadlineHtml .= '<br><span class="badge bg-danger text-white mt-1">İcra müddəti bitib</span>';
+                    } elseif ($daysLeft !== null && $daysLeft <= 3) {
+                        $deadlineHtml .= '<br><span class="badge bg-warning text-dark mt-1">' . $daysLeft . ' gün qalıb</span>';
+                    }
+                }
+            }
+
+            $noteHtml = '-';
+            if ($act->executionNote) {
+                if ($isExecuted) {
+                    $noteHtml = '<span class="badge bg-success">' . e($noteText) . '</span>';
+                } else {
+                    $noteHtml = '<span class="badge bg-secondary">' . e(Str::limit($noteText, 25)) . '</span>';
+                }
+            }
+
+            $data[] = [
+                'DT_RowClass' => $rowClass,
+                'id' => $act->id,
+                'rowNum' => $start + $i + 1,
+                'actType' => $act->actType?->name ?? '-',
+                'legalActNumber' => $act->legal_act_number ?? '-',
+                'legalActDate' => $act->legal_act_date?->format('d.m.Y') ?? '-',
+                'issuingAuthority' => $act->issuingAuthority?->name ?? '-',
+                'summary' => Str::limit($act->summary, 80) ?? '-',
+                'taskNumber' => $act->task_number ?? '-',
+                'taskDescription' => Str::limit($act->task_description, 60) ?: '-',
+                'executor' => $act->executor?->name ?? '-',
+                'department' => $act->executor?->department?->name ?? '-',
+                'deadlineHtml' => $deadlineHtml,
+                'noteHtml' => $noteHtml,
+                'relatedDocNumber' => $act->related_document_number ?? '-',
+                'relatedDocDate' => $act->related_document_date?->format('d.m.Y') ?? '-',
+                'insertedUser' => $act->insertedUser ? $act->insertedUser->name . ' ' . $act->insertedUser->surname : '-',
+                'canEdit' => ($userId === $act->inserted_user_id) || $canManage,
+                'canDelete' => $isAdmin,
+            ];
+        }
+
+        return response()->json([
+            'draw' => (int) $draw,
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $filteredRecords,
+            'data' => $data,
+        ]);
     }
 
     public function store(Request $request)
@@ -168,61 +263,14 @@ class LegalActController extends Controller
 
     public function exportExcel(Request $request)
     {
-        $query = LegalAct::with(['actType', 'issuingAuthority', 'executor', 'executionNote'])->active();
-
-        if ($request->filled('legal_act_number')) {
-            $query->where('legal_act_number', 'like', '%' . $request->legal_act_number . '%');
-        }
-        if ($request->filled('summary')) {
-            $query->where('summary', 'like', '%' . $request->summary . '%');
-        }
-        if ($request->filled('act_type_id')) {
-            $query->where('act_type_id', $request->act_type_id);
-        }
-        if ($request->filled('issued_by_id')) {
-            $query->where('issued_by_id', $request->issued_by_id);
-        }
-        if ($request->filled('executor_id')) {
-            $query->where('executor_id', $request->executor_id);
-        }
-        if ($request->filled('legal_act_date_from')) {
-            $query->where('legal_act_date', '>=', $request->legal_act_date_from);
-        }
-        if ($request->filled('legal_act_date_to')) {
-            $query->where('legal_act_date', '<=', $request->legal_act_date_to);
-        }
-
+        $query = $this->applyFilters($request);
         $filename = 'legal_acts_' . now()->format('Y_m_d_His') . '.xls';
-
         return (new LegalActsExport($query))->download($filename);
     }
 
     public function exportWord(Request $request)
     {
-        $query = LegalAct::with(['actType', 'issuingAuthority', 'executor', 'executionNote'])->active();
-
-        if ($request->filled('legal_act_number')) {
-            $query->where('legal_act_number', 'like', '%' . $request->legal_act_number . '%');
-        }
-        if ($request->filled('summary')) {
-            $query->where('summary', 'like', '%' . $request->summary . '%');
-        }
-        if ($request->filled('act_type_id')) {
-            $query->where('act_type_id', $request->act_type_id);
-        }
-        if ($request->filled('issued_by_id')) {
-            $query->where('issued_by_id', $request->issued_by_id);
-        }
-        if ($request->filled('executor_id')) {
-            $query->where('executor_id', $request->executor_id);
-        }
-        if ($request->filled('legal_act_date_from')) {
-            $query->where('legal_act_date', '>=', $request->legal_act_date_from);
-        }
-        if ($request->filled('legal_act_date_to')) {
-            $query->where('legal_act_date', '<=', $request->legal_act_date_to);
-        }
-
+        $query = $this->applyFilters($request);
         $legalActs = $query->get();
         $filename = 'legal_acts_' . now()->format('Y_m_d_His') . '.doc';
 
@@ -232,5 +280,103 @@ class LegalActController extends Controller
         return response()->download($filePath, $filename, [
             'Content-Type' => 'application/msword',
         ])->deleteFileAfterSend(true);
+    }
+
+    private function applyFilters(Request $request)
+    {
+        $query = LegalAct::with(['actType', 'issuingAuthority', 'executor.department', 'executionNote', 'insertedUser'])
+            ->active();
+
+        if ($request->filled('col.legal_act_number')) {
+            $terms = preg_split('/\s+/', trim($request->input('col.legal_act_number')));
+            foreach ($terms as $term) {
+                $query->where('legal_act_number', 'like', '%' . $term . '%');
+            }
+        }
+
+        if ($request->filled('col.summary')) {
+            $terms = preg_split('/\s+/', trim($request->input('col.summary')));
+            foreach ($terms as $term) {
+                $query->where('summary', 'like', '%' . $term . '%');
+            }
+        }
+
+        if ($request->filled('col.act_type_id')) {
+            $query->where('act_type_id', $request->input('col.act_type_id'));
+        }
+
+        if ($request->filled('col.issued_by_id')) {
+            $query->where('issued_by_id', $request->input('col.issued_by_id'));
+        }
+
+        if ($request->filled('col.executor_id')) {
+            $query->where('executor_id', $request->input('col.executor_id'));
+        }
+
+        if ($request->filled('col.execution_note_id')) {
+            $query->where('execution_note_id', $request->input('col.execution_note_id'));
+        }
+
+        if ($request->filled('col.legal_act_date_from')) {
+            $query->where('legal_act_date', '>=', $request->input('col.legal_act_date_from'));
+        }
+
+        if ($request->filled('col.legal_act_date_to')) {
+            $query->where('legal_act_date', '<=', $request->input('col.legal_act_date_to'));
+        }
+
+        if ($request->filled('col.deadline_from')) {
+            $query->where('execution_deadline', '>=', $request->input('col.deadline_from'));
+        }
+
+        if ($request->filled('col.deadline_to')) {
+            $query->where('execution_deadline', '<=', $request->input('col.deadline_to'));
+        }
+
+        if ($request->filled('col.task_number')) {
+            $terms = preg_split('/\s+/', trim($request->input('col.task_number')));
+            foreach ($terms as $term) {
+                $query->where('task_number', 'like', '%' . $term . '%');
+            }
+        }
+
+        if ($request->filled('col.department_id')) {
+            $query->whereHas('executor', function ($q) use ($request) {
+                $q->where('department_id', $request->input('col.department_id'));
+            });
+        }
+
+        if ($request->filled('col.deadline_status')) {
+            $status = $request->input('col.deadline_status');
+            $today = now()->startOfDay();
+
+            if ($status === 'expired') {
+                $query->whereNotNull('execution_deadline')
+                    ->where('execution_deadline', '<', $today)
+                    ->where(function ($q) {
+                        $q->whereNull('execution_note_id')
+                            ->orWhereHas('executionNote', function ($sq) {
+                                $sq->where('note', 'not like', '%İcra olunub%');
+                            });
+                    });
+            } elseif (in_array($status, ['0day', '1day', '2days', '3days'])) {
+                $days = (int) $status[0];
+                $target = $today->copy()->addDays($days);
+                $query->whereNotNull('execution_deadline')
+                    ->whereDate('execution_deadline', '=', $target)
+                    ->where(function ($q) {
+                        $q->whereNull('execution_note_id')
+                            ->orWhereHas('executionNote', function ($sq) {
+                                $sq->where('note', 'not like', '%İcra olunub%');
+                            });
+                    });
+            } elseif ($status === 'executed') {
+                $query->whereHas('executionNote', function ($q) {
+                    $q->where('note', 'like', '%İcra olunub%');
+                });
+            }
+        }
+
+        return $query;
     }
 }

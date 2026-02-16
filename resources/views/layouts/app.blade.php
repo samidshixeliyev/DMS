@@ -1,28 +1,67 @@
 <!DOCTYPE html>
 <html lang="az">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'DMS Tətbiqi')</title>
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+
+    <!-- ──────────────────────────────────────────────
+         1) Bootstrap CSS — MUST come first, before Tailwind
+         The index page depends heavily on Bootstrap grid,
+         components (.card, .modal, .btn, .table, .badge…)
+         and the DataTables Bootstrap5 theme.
+    ─────────────────────────────────────────────── -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    
+
+    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
 
+    <!-- DataTables + Bootstrap5 theme -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 
+    <!-- Select2 + Bootstrap5 theme -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+        rel="stylesheet">
 
+    <!-- Flatpickr -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    
+
+    <!-- ──────────────────────────────────────────────
+         2) Tailwind CDN — loaded with preflight DISABLED
+         so it doesn't nuke Bootstrap's base styles.
+         We use Tailwind only for the sidebar layout.
+    ─────────────────────────────────────────────── -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            corePlugins: {
+                preflight: false   // ← critical: don't reset Bootstrap
+            },
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        navy: { 50: '#f0f4fa', 100: '#dce4f2', 200: '#b9c9e5', 300: '#8ba6d1', 400: '#5d7fb8', 500: '#1e3a5f', 600: '#1a3354', 700: '#152a46', 800: '#0f1f33', 900: '#0a1522' },
+                        accent: { 50: '#eafbff', 100: '#c8f3ff', 200: '#90e7ff', 300: '#48cae4', 400: '#00b4d8', 500: '#0096c7', 600: '#0077b6', 700: '#005f99', 800: '#004a7a', 900: '#003355' },
+                        mint: { 400: '#34d399', 500: '#06d6a0', 600: '#059669' },
+                        coral: { 400: '#fb7185', 500: '#ef476f', 600: '#e11d48' },
+                        amber: { 400: '#fbbf24', 500: '#ffd166', 600: '#d97706' },
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
         :root {
             --primary: #1e3a5f;
@@ -39,9 +78,9 @@
             --text-primary: #1a1a2e;
             --text-secondary: #64748b;
             --border: #e2e8f0;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
-            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
-            --shadow-lg: 0 10px 25px -3px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04);
+            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+            --shadow-lg: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
             --radius: 12px;
             --radius-sm: 8px;
         }
@@ -53,126 +92,8 @@
         body {
             background: var(--bg-main);
             color: var(--text-primary);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .navbar {
-            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 50%, var(--primary-light) 100%) !important;
-            border-bottom: none;
-            padding: 0.6rem 0;
-            box-shadow: 0 4px 20px rgba(30, 58, 95, 0.25);
-            position: sticky;
-            top: 0;
-            z-index: 1030;
-        }
-
-        .navbar-brand {
-            font-weight: 800;
-            font-size: 1.3rem;
-            letter-spacing: -0.5px;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: #fff !important;
-        }
-
-        .navbar-brand .brand-icon {
-            width: 36px;
-            height: 36px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-light));
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.1rem;
-            box-shadow: 0 2px 8px rgba(0, 180, 216, 0.3);
-        }
-
-        .navbar .nav-link {
-            color: rgba(255,255,255,0.8) !important;
-            font-weight: 500;
-            font-size: 0.85rem;
-            padding: 0.5rem 0.75rem !important;
-            border-radius: var(--radius-sm);
-            transition: all 0.2s ease;
-            margin: 0 1px;
-            white-space: nowrap;
-        }
-
-        .navbar .nav-link:hover,
-        .navbar .nav-link.active {
-            color: #fff !important;
-            background: rgba(255,255,255,0.12);
-        }
-
-        .navbar .nav-link i {
-            font-size: 0.9rem;
-        }
-
-        .nav-separator {
-            color: rgba(255,255,255,0.25);
-            display: flex;
-            align-items: center;
-            padding: 0 0.25rem;
-            font-size: 1.2rem;
-        }
-
-        .navbar .dropdown-menu {
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow-lg);
-            padding: 0.5rem;
-            margin-top: 0.5rem;
-        }
-
-        .navbar .dropdown-item {
-            border-radius: var(--radius-sm);
-            padding: 0.5rem 0.75rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: all 0.15s ease;
-        }
-
-        .navbar .dropdown-item:hover {
-            background: var(--bg-main);
-        }
-
-        .navbar .dropdown-item i {
-            width: 20px;
-            margin-right: 0.5rem;
-            color: var(--primary-light);
-        }
-
-        .dropdown-divider {
-            margin: 0.25rem 0;
-        }
-
-        main {
-            flex: 1;
-            padding: 1.5rem 0;
-        }
-
-        .container-fluid {
-            max-width: 100%;
-            padding: 0 1rem;
-        }
-
-        /* ── Page Header ── */
-        .page-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.5rem;
-        }
-
-        .page-header h2 {
-            font-weight: 800;
-            font-size: 1.75rem;
-            color: var(--primary-dark);
             margin: 0;
-            letter-spacing: -0.5px;
+            overflow: hidden;
         }
 
         .card {
@@ -194,17 +115,30 @@
             padding: 1.25rem;
         }
 
+        .collapse:not(.show) {
+            display: none !important;
+        }
+
+        .collapse.show {
+            display: block !important;
+            visibility: visible !important;
+        }
+
+        .collapsing {
+            visibility: visible !important;
+        }
+
         .btn {
             font-weight: 600;
             font-size: 0.85rem;
             border-radius: var(--radius-sm);
             padding: 0.45rem 1rem;
             transition: all 0.2s ease;
-            border: none;
         }
 
         .btn-primary {
             background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border: none;
             box-shadow: 0 2px 6px rgba(30, 58, 95, 0.25);
         }
 
@@ -216,19 +150,19 @@
 
         .btn-success {
             background: linear-gradient(135deg, #059669, var(--success));
+            border: none;
             box-shadow: 0 2px 6px rgba(6, 214, 160, 0.25);
         }
 
         .btn-success:hover {
             background: linear-gradient(135deg, var(--success), #059669);
-            box-shadow: 0 4px 12px rgba(6, 214, 160, 0.35);
             transform: translateY(-1px);
         }
 
         .btn-info {
             background: linear-gradient(135deg, var(--accent-dark), var(--accent));
             color: #fff;
-            box-shadow: 0 2px 6px rgba(0, 180, 216, 0.25);
+            border: none;
         }
 
         .btn-info:hover {
@@ -240,7 +174,7 @@
         .btn-warning {
             background: linear-gradient(135deg, #e5a100, var(--warning));
             color: var(--text-primary);
-            box-shadow: 0 2px 6px rgba(255, 209, 102, 0.3);
+            border: none;
         }
 
         .btn-warning:hover {
@@ -250,7 +184,7 @@
         .btn-danger {
             background: linear-gradient(135deg, #d63384, var(--danger));
             color: #fff;
-            box-shadow: 0 2px 6px rgba(239, 71, 111, 0.25);
+            border: none;
         }
 
         .btn-danger:hover {
@@ -260,6 +194,7 @@
         .btn-secondary {
             background: #e2e8f0;
             color: var(--text-primary);
+            border: none;
         }
 
         .btn-secondary:hover {
@@ -272,23 +207,8 @@
             font-size: 0.78rem;
         }
 
-        .action-btns {
-            display: flex;
-            gap: 4px;
-            flex-wrap: nowrap;
-        }
-
-        .action-btns .btn {
-            width: 32px;
-            height: 32px;
-            padding: 0;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 8px;
-        }
-
-        .form-control, .form-select {
+        .form-control,
+        .form-select {
             border: 1.5px solid var(--border);
             border-radius: var(--radius-sm);
             padding: 0.5rem 0.75rem;
@@ -296,7 +216,8 @@
             transition: all 0.2s ease;
         }
 
-        .form-control:focus, .form-select:focus {
+        .form-control:focus,
+        .form-select:focus {
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.15);
         }
@@ -311,7 +232,7 @@
         .modal-content {
             border: none;
             border-radius: var(--radius);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
         }
 
         .modal-header {
@@ -370,6 +291,13 @@
             border-left: 4px solid var(--accent);
         }
 
+        .badge {
+            font-weight: 600;
+            font-size: 0.75rem;
+            padding: 0.35em 0.65em;
+            border-radius: 6px;
+        }
+
         .filter-card .card-header {
             background: linear-gradient(135deg, rgba(0, 180, 216, 0.08), rgba(0, 180, 216, 0.02));
             cursor: pointer;
@@ -380,42 +308,48 @@
             color: var(--primary);
         }
 
-        .filter-card .select2-container--bootstrap-5 .select2-selection {
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .page-header h2 {
+            font-weight: 800;
+            font-size: 1.75rem;
+            color: var(--primary-dark);
+            margin: 0;
+            letter-spacing: -0.5px;
+        }
+
+        .select2-container--bootstrap-5 .select2-selection {
             border: 1.5px solid var(--border);
             border-radius: var(--radius-sm);
             min-height: 38px;
             font-size: 0.875rem;
+            display: flex !important;
+            align-items: center !important;
         }
-        .filter-card .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
-            line-height: 36px;
+
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+            line-height: normal !important;
             padding-left: 0.75rem;
         }
-        .filter-card .select2-container--bootstrap-5.select2-container--focus .select2-selection,
-        .filter-card .select2-container--bootstrap-5.select2-container--open .select2-selection {
+
+        .select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder {
+            line-height: normal !important;
+            color: #94a3b8 !important;
+        }
+
+        .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+        .select2-container--bootstrap-5.select2-container--open .select2-selection {
             border-color: var(--accent);
             box-shadow: 0 0 0 3px rgba(0, 180, 216, 0.15);
         }
 
         .flatpickr-input {
             background: #fff !important;
-        }
-
-        footer {
-            background: var(--bg-card);
-            border-top: 1px solid var(--border);
-            margin-top: auto;
-        }
-
-        footer .text-muted {
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .badge {
-            font-weight: 600;
-            font-size: 0.75rem;
-            padding: 0.35em 0.65em;
-            border-radius: 6px;
         }
 
         .detail-table td {
@@ -463,162 +397,430 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
+
+        #sidebar {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            will-change: width;
+        }
+
+        #sidebar.collapsed {
+            width: 80px !important;
+        }
+
+        #sidebar.collapsed .sidebar-text {
+            opacity: 0;
+            width: 0;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        #sidebar.collapsed .sidebar-title-block {
+            display: none;
+        }
+
+        #sidebar.collapsed .user-block {
+            padding: 0.5rem;
+            justify-content: center;
+        }
+
+        #sidebar.collapsed .user-block .user-details {
+            display: none;
+        }
+
+        #sidebar.collapsed .nav-label {
+            display: none;
+        }
+
+        #sidebar.collapsed .nav-link-inner {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        #sidebar.collapsed .nav-link-inner i {
+            margin-right: 0;
+            font-size: 1.15rem;
+        }
+
+        #sidebar.collapsed .sidebar-footer {
+            padding: 0.5rem;
+        }
+
+        #sidebar.collapsed .sidebar-footer .btn-text {
+            display: none;
+        }
+
+        #sidebar.collapsed .sidebar-footer button,
+        #sidebar.collapsed .sidebar-footer a {
+            justify-content: center;
+            padding: 0.5rem;
+        }
+
+        #sidebar.collapsed .collapse-arrow {
+            transform: rotate(180deg);
+        }
+
+        .sidebar-text {
+            transition: opacity 0.25s ease, width 0.25s ease;
+            opacity: 1;
+        }
+
+        #mainContent {
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #sidebar ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        #sidebar ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #sidebar ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 4px;
+        }
+
+        .sidebar-nav-active {
+            background: linear-gradient(135deg, rgba(0, 180, 216, 0.2), rgba(0, 150, 199, 0.1)) !important;
+            border-left: 3px solid #00b4d8 !important;
+            color: #48cae4 !important;
+        }
+
+        .sidebar-nav-active i {
+            color: #48cae4 !important;
+        }
+
+        #sidebar.collapsed .nav-item-wrapper {
+            position: relative;
+        }
+
+        #sidebar.collapsed .nav-item-wrapper:hover .sidebar-tooltip {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(0) translateY(-50%);
+        }
+
+        .sidebar-tooltip {
+            position: absolute;
+            left: calc(100% + 12px);
+            top: 50%;
+            transform: translateX(-8px) translateY(-50%);
+            background: #1e293b;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            white-space: nowrap;
+            z-index: 9999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.15s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            pointer-events: none;
+        }
+
+        .sidebar-tooltip::before {
+            content: '';
+            position: absolute;
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 5px solid transparent;
+            border-right-color: #1e293b;
+        }
+
+        #sidebar::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            opacity: 0.03;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        #sidebarOverlay {
+            transition: opacity 0.3s ease;
+        }
+
+        @media (max-width: 1024px) {
+            #sidebar {
+                position: fixed !important;
+                z-index: 1050;
+                transform: translateX(-100%);
+            }
+
+            #sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            #mainContent {
+                margin-left: 0 !important;
+            }
+        }
     </style>
-    
+
     @stack('styles')
 </head>
+
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url('/') }}">
-                <span class="brand-icon"><i class="bi bi-file-earmark-text"></i></span>
-                DMS
-            </a>
-            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('legal-acts.*') ? 'active' : '' }}" 
-                           href="{{ route('legal-acts.index') }}">
-                            <i class="bi bi-file-text me-1"></i> Hüquqi Aktlar
-                        </a>
-                    </li>
-                    <li class="nav-separator">|</li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('act-types.*') ? 'active' : '' }}" 
-                           href="{{ route('act-types.index') }}">
-                            <i class="bi bi-bookmark me-1"></i> Sənəd növləri
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('issuing-authorities.*') ? 'active' : '' }}" 
-                           href="{{ route('issuing-authorities.index') }}">
-                            <i class="bi bi-building-check me-1"></i> Verən orqanlar
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('departments.*') ? 'active' : '' }}" 
-                           href="{{ route('departments.index') }}">
-                            <i class="bi bi-diagram-3 me-1"></i> Şöbələr
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('executors.*') ? 'active' : '' }}" 
-                           href="{{ route('executors.index') }}">
-                            <i class="bi bi-people me-1"></i> İcraçılar
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('execution-notes.*') ? 'active' : '' }}" 
-                           href="{{ route('execution-notes.index') }}">
-                            <i class="bi bi-sticky me-1"></i> İcra qeydləri
-                        </a>
-                    </li>
-                    @if(auth()->user()->user_role === 'admin')
-                    <li class="nav-separator">|</li>
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}" 
-                           href="{{ route('users.index') }}">
-                            <i class="bi bi-person-gear me-1"></i> İstifadəçilər
-                        </a>
-                    </li>
-                    @endif
-                </ul>
-                
-                <ul class="navbar-nav">
-                    @auth
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="bi bi-person-circle me-1"></i>
-                            {{ auth()->user()->name }} {{ auth()->user()->surname }}
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li class="px-3 py-2">
-                                <small class="text-muted d-block">Rol</small>
-                                <span class="badge {{ auth()->user()->user_role === 'admin' ? 'bg-danger' : (auth()->user()->user_role === 'manager' ? 'bg-primary' : 'bg-secondary') }}">
-                                    {{ auth()->user()->user_role === 'admin' ? 'Admin' : (auth()->user()->user_role === 'manager' ? 'Menecer' : 'İstifadəçi') }}
-                                </span>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <form method="POST" action="{{ route('logout') }}" class="d-inline">
-                                    @csrf
-                                    <button type="submit" class="dropdown-item text-danger">
-                                        <i class="bi bi-box-arrow-right"></i> Çıxış
-                                    </button>
-                                </form>
-                            </li>
-                        </ul>
-                    </li>
-                    @endauth
-                </ul>
+
+    <div style="display:flex; min-height:100vh;">
+
+        <div id="sidebarOverlay"
+            style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1040;"
+            onclick="toggleMobileSidebar()"></div>
+
+        <aside id="sidebar"
+            style="position:fixed; top:0; left:0; height:100vh; width:260px; z-index:1045; display:flex; flex-direction:column; background:linear-gradient(to bottom, #0f1f33, #152a46, #0f1f33); color:#fff; overflow:hidden;">
+
+            <div
+                style="display:flex; align-items:center; justify-content:space-between; padding:1rem; border-bottom:1px solid rgba(255,255,255,0.1); position:relative; z-index:1;">
+                <a href="{{ url('/') }}" style="display:flex; align-items:center; gap:5px; text-decoration:none;">
+                    <div
+                        style="width:36px; height:36px; border-radius:12px; background:linear-gradient(135deg,#00b4d8,#0077b6); display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(0,180,216,0.3); flex-shrink:0;">
+                        <i class="bi bi-file-earmark-text" style="color:#fff; font-size:1rem;"></i>
+                    </div>
+                    <span class="sidebar-text"
+                        style="font-weight:800; font-size:1.15rem; letter-spacing:-0.5px; color:#fff;">DMS</span>
+                </a>
+                <button onclick="toggleSidebar()" class="d-none d-lg-flex"
+                    style="width:28px; height:28px; align-items:center; justify-content:center; border-radius:8px; border:none; background:transparent; cursor:pointer;"
+                    title="Menyunu yığ/aç">
+                    <i class="bi bi-chevron-left collapse-arrow"
+                        style="color:rgba(255,255,255,0.6); font-size:0.85rem; transition:transform 0.3s;"></i>
+                </button>
             </div>
-        </div>
-    </nav>
 
-    <!-- Main Content -->
-    <main class="py-4">
-        <div class="container-fluid">
-            @yield('content')
-        </div>
-    </main>
+            <div class="sidebar-title-block"
+                style="padding:0.75rem 1rem; border-bottom:1px solid rgba(255,255,255,0.1); position:relative; z-index:1;">
+                <p
+                    style="font-size:0.68rem; font-weight:600; text-transform:uppercase; letter-spacing:2px; color:rgba(72,202,228,0.7); margin:0; line-height:1.3;">
+                    Sənəd İdarəetmə Sistemi</p>
+            </div>
 
-    <!-- Footer -->
-    <footer>
-        <div class="text-center p-3 text-muted">
-            &copy; {{ date('Y') }} DMS &mdash; Sənəd İdarəetmə Sistemi
-        </div>
-    </footer>
+            <div class="user-block"
+                style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border-bottom:1px solid rgba(255,255,255,0.1); position:relative; z-index:1;">
+                <div
+                    style="width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#00b4d8,#06d6a0); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:0.82rem; font-weight:700; box-shadow:0 2px 8px rgba(0,180,216,0.25);">
+                    {{ substr(auth()->user()->name, 0, 1) }}{{ substr(auth()->user()->surname, 0, 1) }}
+                </div>
+                <div class="user-details sidebar-text" style="min-width:0;">
+                    <p
+                        style="font-size:0.85rem; font-weight:600; color:#fff; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        {{ auth()->user()->name }} {{ auth()->user()->surname }}
+                    </p>
+                    <span
+                        style="display:inline-flex; align-items:center; gap:4px; margin-top:2px; padding:2px 8px; border-radius:999px; font-size:0.62rem; font-weight:700;
+                    {{ auth()->user()->user_role === 'admin' ? 'background:rgba(239,71,111,0.2); color:#fb7185;' : (auth()->user()->user_role === 'manager' ? 'background:rgba(0,180,216,0.2); color:#48cae4;' : 'background:rgba(255,255,255,0.1); color:rgba(255,255,255,0.6);') }}">
+                        <span style="width:6px; height:6px; border-radius:50%; background:currentColor;"></span>
+                        {{ auth()->user()->user_role === 'admin' ? 'Admin' : (auth()->user()->user_role === 'manager' ? 'Menecer' : 'İstifadəçi') }}
+                    </span>
+                </div>
+            </div>
 
-    <!-- jQuery (required for DataTables & Select2) -->
+            <nav style="flex:1; padding:0.75rem 0.5rem; position:relative; z-index:1;">
+
+                <p class="nav-label"
+                    style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3); padding:4px 12px 8px; margin:0;">
+                    Əsas</p>
+
+                <div class="nav-item-wrapper" style="margin-bottom:2px;">
+                    <a href="{{ route('legal-acts.index') }}"
+                        class="nav-link-inner {{ request()->routeIs('legal-acts.*') ? 'sidebar-nav-active' : '' }}"
+                        style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
+                        <i class="bi bi-file-text" style="font-size:1rem; width:20px; text-align:center;"></i>
+                        <span class="sidebar-text">Hüquqi Aktlar</span>
+                    </a>
+                    <span class="sidebar-tooltip">Hüquqi Aktlar</span>
+                </div>
+
+                <div style="height:1px; background:rgba(255,255,255,0.08); margin:0.5rem 0.75rem;"></div>
+                <p class="nav-label"
+                    style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3); padding:4px 12px 8px; margin:0;">
+                    Kataloqlar</p>
+
+                <div class="nav-item-wrapper" style="margin-bottom:2px;">
+                    <a href="{{ route('act-types.index') }}"
+                        class="nav-link-inner {{ request()->routeIs('act-types.*') ? 'sidebar-nav-active' : '' }}"
+                        style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
+                        <i class="bi bi-bookmark" style="font-size:1rem; width:20px; text-align:center;"></i>
+                        <span class="sidebar-text">Sənəd növləri</span>
+                    </a>
+                    <span class="sidebar-tooltip">Sənəd növləri</span>
+                </div>
+
+                <div class="nav-item-wrapper" style="margin-bottom:2px;">
+                    <a href="{{ route('issuing-authorities.index') }}"
+                        class="nav-link-inner {{ request()->routeIs('issuing-authorities.*') ? 'sidebar-nav-active' : '' }}"
+                        style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
+                        <i class="bi bi-building-check" style="font-size:1rem; width:20px; text-align:center;"></i>
+                        <span class="sidebar-text">Verən orqanlar</span>
+                    </a>
+                    <span class="sidebar-tooltip">Verən orqanlar</span>
+                </div>
+
+                <div class="nav-item-wrapper" style="margin-bottom:2px;">
+                    <a href="{{ route('departments.index') }}"
+                        class="nav-link-inner {{ request()->routeIs('departments.*') ? 'sidebar-nav-active' : '' }}"
+                        style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
+                        <i class="bi bi-diagram-3" style="font-size:1rem; width:20px; text-align:center;"></i>
+                        <span class="sidebar-text">Şöbələr</span>
+                    </a>
+                    <span class="sidebar-tooltip">Şöbələr</span>
+                </div>
+
+                <div class="nav-item-wrapper" style="margin-bottom:2px;">
+                    <a href="{{ route('executors.index') }}"
+                        class="nav-link-inner {{ request()->routeIs('executors.*') ? 'sidebar-nav-active' : '' }}"
+                        style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
+                        <i class="bi bi-people" style="font-size:1rem; width:20px; text-align:center;"></i>
+                        <span class="sidebar-text">İcraçılar</span>
+                    </a>
+                    <span class="sidebar-tooltip">İcraçılar</span>
+                </div>
+
+                <div class="nav-item-wrapper" style="margin-bottom:2px;">
+                    <a href="{{ route('execution-notes.index') }}"
+                        class="nav-link-inner {{ request()->routeIs('execution-notes.*') ? 'sidebar-nav-active' : '' }}"
+                        style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
+                        <i class="bi bi-sticky" style="font-size:1rem; width:20px; text-align:center;"></i>
+                        <span class="sidebar-text">İcra qeydləri</span>
+                    </a>
+                    <span class="sidebar-tooltip">İcra qeydləri</span>
+                </div>
+
+                @if(auth()->user()->user_role === 'admin')
+                    <div style="height:1px; background:rgba(255,255,255,0.08); margin:0.5rem 0.75rem;"></div>
+                    <p class="nav-label"
+                        style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3); padding:4px 12px 8px; margin:0;">
+                        Admin</p>
+
+                    <div class="nav-item-wrapper" style="margin-bottom:2px;">
+                        <a href="{{ route('users.index') }}"
+                            class="nav-link-inner {{ request()->routeIs('users.*') ? 'sidebar-nav-active' : '' }}"
+                            style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
+                            <i class="bi bi-person-gear" style="font-size:1rem; width:20px; text-align:center;"></i>
+                            <span class="sidebar-text">İstifadəçilər</span>
+                        </a>
+                        <span class="sidebar-tooltip">İstifadəçilər</span>
+                    </div>
+                @endif
+
+            </nav>
+
+            <div class="sidebar-footer"
+                style="border-top:1px solid rgba(255,255,255,0.1); padding:0.75rem; position:relative; z-index:1;">
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit"
+                        style="display:flex; align-items:center; gap:0.5rem; width:100%; padding:0.5rem 0.75rem; border-radius:8px; font-size:0.85rem; font-weight:600; color:#fb7185; background:transparent; border:none; cursor:pointer; transition:all 0.2s;"
+                        onmouseover="this.style.background='rgba(239,71,111,0.12)'"
+                        onmouseout="this.style.background='transparent'">
+                        <i class="bi bi-box-arrow-right" style="font-size:1rem;"></i>
+                        <span class="btn-text sidebar-text">Çıxış</span>
+                    </button>
+                </form>
+            </div>
+        </aside>
+
+        <div id="mainContent"
+            style="flex:1; display:flex; flex-direction:column; height:100vh; overflow:hidden; margin-left:260px;">
+
+            <header
+                style="position:sticky; top:0; z-index:1020; background:rgba(255,255,255,0.85); backdrop-filter:blur(12px); border-bottom:1px solid rgba(226,232,240,0.8); padding:0.65rem 1.5rem; display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <button onclick="toggleMobileSidebar()" class="d-lg-none"
+                        style="width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:8px; border:none; background:transparent; cursor:pointer;">
+                        <i class="bi bi-list" style="font-size:1.25rem; color:#475569;"></i>
+                    </button>
+                    <div>
+                        <h1 style="font-size:1.1rem; font-weight:700; color:#1e293b; margin:0; letter-spacing:-0.3px;">
+                            @yield('page-title', 'İdarəetmə paneli')</h1>
+                        <p style="font-size:0.72rem; color:#94a3b8; font-weight:500; margin:0;">DMS — Sənəd İdarəetmə
+                            Sistemi</p>
+                    </div>
+                </div>
+                <div>
+                    <span style="font-size:0.75rem; color:#94a3b8; font-weight:500;">{{ date('d.m.Y') }}</span>
+                </div>
+            </header>
+
+            <main style="flex:1; overflow:auto; padding:1.25rem;">
+                <div class="container-fluid" style="max-width:100%; padding:0;">
+                    @yield('content')
+                </div>
+            </main>
+
+            <footer style="border-top:1px solid #e2e8f0; background:#fff; padding:0.6rem 1.5rem; text-align:center;">
+                <p style="font-size:0.75rem; font-weight:500; color:#94a3b8; margin:0;">&copy; {{ date('Y') }} DMS
+                    &mdash; Sənəd İdarəetmə Sistemi</p>
+            </footer>
+        </div>
+    </div>
+
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-
-    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-    <!-- DataTables JS + FixedColumns + Buttons -->
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/fixedcolumns/4.3.0/js/dataTables.fixedColumns.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
     <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.colVis.min.js"></script>
-
-    <!-- Select2 JS -->
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-
-    <!-- Flatpickr JS + Azerbaijan locale -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/az.js"></script>
-    
+
     <script>
-        // Global CSRF token
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('mainContent');
+        const EXPANDED_W = '260px';
+        const COLLAPSED_W = '72px';
+
+        if (localStorage.getItem('sidebar-collapsed') === 'true') {
+            sidebar.classList.add('collapsed');
+            sidebar.style.width = COLLAPSED_W;
+            mainContent.style.marginLeft = COLLAPSED_W;
+        }
+
+        function toggleSidebar() {
+            const isCollapsed = sidebar.classList.toggle('collapsed');
+            sidebar.style.width = isCollapsed ? COLLAPSED_W : EXPANDED_W;
+            mainContent.style.marginLeft = isCollapsed ? COLLAPSED_W : EXPANDED_W;
+            localStorage.setItem('sidebar-collapsed', isCollapsed);
+        }
+
+        const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+        function toggleMobileSidebar() {
+            const isOpen = sidebar.classList.toggle('mobile-open');
+            sidebarOverlay.style.display = isOpen ? 'block' : 'none';
+        }
+
+        document.querySelectorAll('.nav-link-inner:not(.sidebar-nav-active)').forEach(function (el) {
+            el.addEventListener('mouseenter', function () { this.style.color = '#fff'; this.style.background = 'rgba(255,255,255,0.08)'; });
+            el.addEventListener('mouseleave', function () { this.style.color = 'rgba(255,255,255,0.7)'; this.style.background = 'transparent'; });
+        });
+
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        
-        // Role check
+
         const userRole = @json(auth()->user()?->user_role ?? 'user');
         const canManage = ['admin', 'manager'].includes(userRole);
         const isAdmin = userRole === 'admin';
-        
-        // Helper: escape HTML to prevent XSS
+
         function escapeHtml(text) {
             if (!text) return '';
             const div = document.createElement('div');
             div.appendChild(document.createTextNode(text));
             return div.innerHTML;
         }
-        
-        // Helper: fetch JSON with error handling
+
         async function fetchJson(url) {
             try {
                 const response = await fetch(url, {
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken
-                    }
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
                 });
                 if (!response.ok) throw new Error('Network response was not ok');
                 return await response.json();
@@ -629,23 +831,22 @@
             }
         }
 
-        // Auto-dismiss alerts after 4 seconds
-        document.querySelectorAll('.alert-dismissible').forEach(alert => {
-            setTimeout(() => {
-                const bsAlert = bootstrap.Alert.getOrCreateInstance(alert);
+        document.querySelectorAll('.alert-dismissible').forEach(function (alertEl) {
+            setTimeout(function () {
+                var bsAlert = bootstrap.Alert.getOrCreateInstance(alertEl);
                 bsAlert.close();
             }, 4000);
         });
 
-        // Global Select2 defaults
         $.fn.select2.defaults.set('theme', 'bootstrap-5');
         $.fn.select2.defaults.set('language', {
-            noResults: function() { return 'Nəticə tapılmadı'; },
-            searching: function() { return 'Axtarılır...'; },
-            removeAllItems: function() { return 'Hamısını sil'; }
+            noResults: function () { return 'Nəticə tapılmadı'; },
+            searching: function () { return 'Axtarılır...'; },
+            removeAllItems: function () { return 'Hamısını sil'; }
         });
     </script>
-    
+
     @stack('scripts')
 </body>
+
 </html>
