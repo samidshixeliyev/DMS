@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Executor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -11,8 +12,9 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::active()->orderBy('id', 'desc')->paginate(20);
-        return view('users.index', compact('users'));
+        $users = User::with('executor.department')->active()->orderBy('id', 'desc')->paginate(20);
+        $executors = Executor::with('department')->active()->get();
+        return view('users.index', compact('users', 'executors'));
     }
 
     public function store(Request $request)
@@ -22,7 +24,9 @@ class UserController extends Controller
             'surname' => 'required|string|max:255',
             'username' => 'required|string|max:255|unique:users,username',
             'password' => 'required|string|min:6|confirmed',
-            'user_role' => 'required|in:admin,manager,user',
+            'user_role' => 'required|in:admin,manager,user,executor',
+            'executor_id' => 'nullable|exists:executors,id',
+            'helper_name' => 'nullable|string|max:255',
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
@@ -34,24 +38,32 @@ class UserController extends Controller
 
     public function show(User $user)
     {
+        $user->load('executor.department');
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'surname' => $user->surname,
             'username' => $user->username,
             'user_role' => $user->user_role,
+            'executor_name' => $user->executor?->name,
+            'executor_department' => $user->executor?->department?->name,
+            'helper_name' => $user->helper_name,
             'created_at' => $user->created_at?->format('d.m.Y H:i'),
         ]);
     }
 
     public function edit(User $user)
     {
+        $executors = Executor::with('department')->active()->get();
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
             'surname' => $user->surname,
             'username' => $user->username,
             'user_role' => $user->user_role,
+            'executor_id' => $user->executor_id,
+            'helper_name' => $user->helper_name,
+            'executors' => $executors,
         ]);
     }
 
@@ -62,7 +74,9 @@ class UserController extends Controller
             'surname' => 'required|string|max:255',
             'username' => ['required', 'string', 'max:255', Rule::unique('users')->ignore($user->id)],
             'password' => 'nullable|string|min:6|confirmed',
-            'user_role' => 'required|in:admin,manager,user',
+            'user_role' => 'required|in:admin,manager,user,executor',
+            'executor_id' => 'nullable|exists:executors,id',
+            'helper_name' => 'nullable|string|max:255',
         ]);
 
         if (!empty($validated['password'])) {
@@ -78,7 +92,6 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
-        // Prevent deleting yourself
         if ($user->id === auth()->id()) {
             return redirect()->route('users.index')->with('error', 'Özünüzü silə bilməzsiniz.');
         }

@@ -14,7 +14,9 @@ return new class extends Migration
             $table->string('password');
             $table->string('name');
             $table->string('surname');
-            $table->enum('user_role', ['admin', 'user', 'manager'])->default('user');
+            $table->string('user_role')->default('user'); // admin, manager, user, executor
+            $table->unsignedBigInteger('executor_id')->nullable();
+            $table->string('helper_name')->nullable();
             $table->boolean('is_deleted')->default(false);
             $table->timestamps();
         });

@@ -637,6 +637,18 @@
                     <span class="sidebar-tooltip">Hüquqi Aktlar</span>
                 </div>
 
+                @if(auth()->user()->user_role === 'executor' || auth()->user()->canManage())
+                <div class="nav-item-wrapper" style="margin-bottom:2px;">
+                    <a href="{{ route('executor.index') }}"
+                        class="nav-link-inner {{ request()->routeIs('executor.*') ? 'sidebar-nav-active' : '' }}"
+                        style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
+                    <i class="bi bi-kanban" style="font-size:1rem; width:20px; text-align:center;"></i>
+                <span class="sidebar-text">İcraçı Paneli</span>
+                </a>
+                    <span class="sidebar-tooltip">İcraçı Paneli</span>
+                  </div>
+                @endif
+
                 <div style="height:1px; background:rgba(255,255,255,0.08); margin:0.5rem 0.75rem;"></div>
                 <p class="nav-label"
                     style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3); padding:4px 12px 8px; margin:0;">
@@ -657,9 +669,9 @@
                         class="nav-link-inner {{ request()->routeIs('issuing-authorities.*') ? 'sidebar-nav-active' : '' }}"
                         style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
                         <i class="bi bi-building-check" style="font-size:1rem; width:20px; text-align:center;"></i>
-                        <span class="sidebar-text">Verən orqanlar</span>
+                        <span class="sidebar-text">Kim qəbul edib</span>
                     </a>
-                    <span class="sidebar-tooltip">Verən orqanlar</span>
+                    <span class="sidebar-tooltip">Kim qəbul edibr</span>
                 </div>
 
                 <div class="nav-item-wrapper" style="margin-bottom:2px;">

@@ -46,6 +46,8 @@
                         <th>Soyad</th>
                         <th>İstifadəçi adı</th>
                         <th>Rol</th>
+                        <th>Rəhbər icraçı</th>
+                        <th>Helper adı</th>
                         <th style="width: 150px">Əməliyyatlar</th>
                     </tr>
                 </thead>
@@ -61,10 +63,23 @@
                                     <span class="badge bg-danger">Admin</span>
                                 @elseif($user->user_role === 'manager')
                                     <span class="badge bg-primary">Menecer</span>
+                                @elseif($user->user_role === 'executor')
+                                    <span class="badge bg-info">İcraçı</span>
                                 @else
                                     <span class="badge bg-secondary">İstifadəçi</span>
                                 @endif
                             </td>
+                            <td>
+                                @if($user->executor)
+                                    <span class="badge" style="background: var(--primary-light)">{{ $user->executor->name }}</span>
+                                    @if($user->executor->department)
+                                        <br><small class="text-muted">{{ $user->executor->department->name }}</small>
+                                    @endif
+                                @else
+                                    <span class="text-muted">-</span>
+                                @endif
+                            </td>
+                            <td>{{ $user->helper_name ?: '-' }}</td>
                             <td>
                                 <div class="action-btns">
                                     <button type="button" class="btn btn-sm btn-info" title="Bax"
@@ -86,7 +101,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6">
+                            <td colspan="8">
                                 <div class="empty-state">
                                     <i class="bi bi-person-gear d-block"></i>
                                     <p class="mb-0">İstifadəçi tapılmadı</p>
@@ -139,12 +154,28 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label">Rol <span class="text-danger">*</span></label>
-                            <select name="user_role" class="form-select" required>
+                            <select name="user_role" id="create_user_role" class="form-select" required onchange="toggleExecutorFields('create')">
                                 <option value="">Seç</option>
                                 <option value="admin" {{ old('user_role') === 'admin' ? 'selected' : '' }}>Admin</option>
                                 <option value="manager" {{ old('user_role') === 'manager' ? 'selected' : '' }}>Menecer</option>
                                 <option value="user" {{ old('user_role') === 'user' ? 'selected' : '' }}>İstifadəçi</option>
+                                <option value="executor" {{ old('user_role') === 'executor' ? 'selected' : '' }}>İcraçı</option>
                             </select>
+                        </div>
+                        <div class="col-12 executor-fields-create" style="display: {{ old('user_role') === 'executor' ? 'block' : 'none' }};">
+                            <label class="form-label">Rəhbər icraçı</label>
+                            <select name="executor_id" class="form-select">
+                                <option value="">Seç (ixtiyari)</option>
+                                @foreach($executors as $executor)
+                                    <option value="{{ $executor->id }}" {{ old('executor_id') == $executor->id ? 'selected' : '' }}>
+                                        {{ $executor->name }}{{ $executor->department ? ' — ' . $executor->department->name : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-12 executor-fields-create" style="display: {{ old('user_role') === 'executor' ? 'block' : 'none' }};">
+                            <label class="form-label">Helper adı</label>
+                            <input type="text" name="helper_name" class="form-control" value="{{ old('helper_name') }}" placeholder="Rəhbər icraçının tam adı">
                         </div>
                     </div>
                 </div>
@@ -192,11 +223,22 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label">Rol <span class="text-danger">*</span></label>
-                            <select name="user_role" id="edit_user_role" class="form-select" required>
+                            <select name="user_role" id="edit_user_role" class="form-select" required onchange="toggleExecutorFields('edit')">
                                 <option value="admin">Admin</option>
                                 <option value="manager">Menecer</option>
                                 <option value="user">İstifadəçi</option>
+                                <option value="executor">İcraçı</option>
                             </select>
+                        </div>
+                        <div class="col-12 executor-fields-edit" style="display:none;">
+                            <label class="form-label">Rəhbər icraçı</label>
+                            <select name="executor_id" id="edit_executor_id" class="form-select">
+                                <option value="">Seç (ixtiyari)</option>
+                            </select>
+                        </div>
+                        <div class="col-12 executor-fields-edit" style="display:none;">
+                            <label class="form-label">Helper adı</label>
+                            <input type="text" name="helper_name" id="edit_helper_name" class="form-control" placeholder="Rəhbər icraçının tam adı">
                         </div>
                     </div>
                 </div>
@@ -233,12 +275,20 @@
 
 @push('scripts')
 <script>
-const roleLabels = { admin: 'Admin', manager: 'Menecer', user: 'İstifadəçi' };
+const roleLabels = { admin: 'Admin', manager: 'Menecer', user: 'İstifadəçi', executor: 'İcraçı' };
+
+function toggleExecutorFields(prefix) {
+    var role = document.getElementById(prefix + '_user_role').value;
+    var fields = document.querySelectorAll('.executor-fields-' + prefix);
+    fields.forEach(function (el) {
+        el.style.display = (role === 'executor') ? 'block' : 'none';
+    });
+}
 
 async function showDetails(id) {
     const data = await fetchJson(`/users/${id}`);
     if (!data) return;
-    
+
     document.getElementById('showModalBody').innerHTML = `
         <table class="table table-bordered detail-table mb-0">
             <tr><th width="35%">ID</th><td>${escapeHtml(String(data.id))}</td></tr>
@@ -246,6 +296,9 @@ async function showDetails(id) {
             <tr><th>Soyad</th><td>${escapeHtml(data.surname)}</td></tr>
             <tr><th>İstifadəçi adı</th><td>${escapeHtml(data.username)}</td></tr>
             <tr><th>Rol</th><td>${escapeHtml(roleLabels[data.user_role] || data.user_role)}</td></tr>
+            <tr><th>Rəhbər icraçı</th><td>${escapeHtml(data.executor_name || '-')}</td></tr>
+            <tr><th>Rəhbər icraçı şöbəsi</th><td>${escapeHtml(data.executor_department || '-')}</td></tr>
+            <tr><th>Helper adı</th><td>${escapeHtml(data.helper_name || '-')}</td></tr>
             <tr><th>Yaradılma tarixi</th><td>${escapeHtml(data.created_at || '-')}</td></tr>
         </table>
     `;
@@ -255,11 +308,28 @@ async function showDetails(id) {
 async function editRecord(id) {
     const data = await fetchJson(`/users/${id}/edit`);
     if (!data) return;
-    
+
     document.getElementById('edit_name').value = data.name || '';
     document.getElementById('edit_surname').value = data.surname || '';
     document.getElementById('edit_username').value = data.username || '';
     document.getElementById('edit_user_role').value = data.user_role || 'user';
+    document.getElementById('edit_helper_name').value = data.helper_name || '';
+
+    // Populate executor dropdown
+    var select = document.getElementById('edit_executor_id');
+    select.innerHTML = '<option value="">Seç (ixtiyari)</option>';
+    if (data.executors && Array.isArray(data.executors)) {
+        data.executors.forEach(function (exec) {
+            var dept = exec.department ? ' — ' + exec.department.name : '';
+            var option = document.createElement('option');
+            option.value = exec.id;
+            option.textContent = exec.name + dept;
+            if (exec.id == data.executor_id) option.selected = true;
+            select.appendChild(option);
+        });
+    }
+
+    toggleExecutorFields('edit');
     document.getElementById('editForm').action = `/users/${id}`;
     new bootstrap.Modal(document.getElementById('editModal')).show();
 }

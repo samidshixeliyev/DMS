@@ -25,8 +25,21 @@ class Executor extends Model
         return $this->belongsTo(Department::class);
     }
 
+    /**
+     * Users linked to this executor.
+     */
+    public function users()
+    {
+        return $this->hasMany(User::class);
+    }
+
+    /**
+     * Legal acts assigned to this executor (many-to-many via pivot).
+     */
     public function legalActs()
     {
-        return $this->hasMany(LegalAct::class);
+        return $this->belongsToMany(LegalAct::class, 'legal_act_executor')
+                    ->withPivot('role')
+                    ->withTimestamps();
     }
 }

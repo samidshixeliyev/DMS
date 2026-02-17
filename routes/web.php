@@ -9,6 +9,7 @@ use App\Http\Controllers\ExecutorController;
 use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\ExecutionNoteController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\ExecutorDashboardController;
 
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('login', [AuthController::class, 'login'])->name('login.submit');
@@ -16,13 +17,30 @@ Route::post('logout', [AuthController::class, 'logout'])->name('logout');
 
 Route::middleware('auth')->group(function () {
 
-    Route::get('/', fn() => redirect()->route('legal-acts.index'));
+    Route::get('/', function () {
+        if (auth()->user()->user_role === 'executor') {
+            return redirect()->route('executor.index');
+        }
+        return redirect()->route('legal-acts.index');
+    });
 
+    // ─── Executor Dashboard ─────────────────────────────────────
+    Route::middleware('role:executor,admin,manager')->group(function () {
+        Route::get('executor/dashboard', [ExecutorDashboardController::class, 'index'])->name('executor.index');
+        Route::post('executor/dashboard/load', [ExecutorDashboardController::class, 'load'])->name('executor.load');
+        Route::get('executor/legal-acts/{legalAct}', [ExecutorDashboardController::class, 'show'])->name('executor.show');
+        Route::post('executor/legal-acts/{legalAct}/status', [ExecutorDashboardController::class, 'storeStatus'])->name('executor.store-status');
+        Route::get('executor/attachments/{attachment}/download', [ExecutorDashboardController::class, 'downloadAttachment'])->name('executor.download-attachment');
+        Route::get('executor/attachments/{attachment}/preview', [ExecutorDashboardController::class, 'previewAttachment'])->name('executor.preview-attachment');
+    });
+
+    // ─── Legal Acts (Admin / Manager view) ──────────────────────
     Route::post('legal-acts/load', [LegalActController::class, 'load'])->name('legal-acts.load');
     Route::get('legal-acts/export/excel', [LegalActController::class, 'exportExcel'])->name('legal-acts.export.excel');
     Route::get('legal-acts/export/word', [LegalActController::class, 'exportWord'])->name('legal-acts.export.word');
     Route::resource('legal-acts', LegalActController::class);
 
+    // ─── Catalogs ───────────────────────────────────────────────
     Route::get('act-types', [ActTypeController::class, 'index'])->name('act-types.index');
     Route::get('act-types/{actType}', [ActTypeController::class, 'show'])->name('act-types.show');
     Route::get('act-types/{actType}/edit', [ActTypeController::class, 'edit'])->name('act-types.edit');
@@ -68,6 +86,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('execution-notes/{executionNote}', [ExecutionNoteController::class, 'destroy'])->name('execution-notes.destroy');
     });
 
+    // ─── Users (Admin only) ─────────────────────────────────────
     Route::middleware('role:admin')->group(function () {
         Route::get('users', [UserController::class, 'index'])->name('users.index');
         Route::post('users', [UserController::class, 'store'])->name('users.store');

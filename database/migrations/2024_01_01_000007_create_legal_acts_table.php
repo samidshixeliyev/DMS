@@ -12,14 +12,12 @@ return new class extends Migration
             $table->id();
             $table->foreignId('act_type_id')->constrained('act_types')->onDelete('cascade');
             $table->foreignId('issued_by_id')->constrained('issuing_authorities')->onDelete('cascade');
-            $table->foreignId('executor_id')->constrained('executors')->onDelete('cascade');
-            $table->foreignId('execution_note_id')->nullable()->constrained('execution_notes')->onDelete('set null');
             $table->string('legal_act_number');
             $table->date('legal_act_date');
             $table->text('summary')->nullable();
             $table->string('task_number')->nullable();
             $table->text('task_description')->nullable();
-            $table->date('execution_deadline');
+            $table->date('execution_deadline')->nullable();
             $table->string('related_document_number')->nullable();
             $table->date('related_document_date')->nullable();
             $table->string('created_by')->nullable();
