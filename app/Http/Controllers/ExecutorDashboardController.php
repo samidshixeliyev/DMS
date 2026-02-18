@@ -204,7 +204,7 @@ class ExecutorDashboardController extends Controller
     }
 
     /**
-     * Store a new status log with optional attachment.
+     * Store a new status log with optional attachments (multiple files).
      */
     public function storeStatus(Request $request, LegalAct $legalAct)
     {
@@ -215,30 +215,37 @@ class ExecutorDashboardController extends Controller
             'application/pdf',
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'image/jpeg',
+            'image/png',
+            'image/jpg',
         ];
+
+        $allowedExtensions = ['doc', 'docx', 'pdf', 'jpg', 'jpeg', 'png'];
 
         $validated = $request->validate([
             'execution_note_id' => 'required|exists:execution_notes,id',
             'custom_note' => 'nullable|string|max:2000',
-            'attachment' => 'nullable|file|max:10240',
+            'attachments' => 'nullable|array|max:10',
+            'attachments.*' => 'file|max:10240',
         ]);
 
-        // Validate MIME type manually
-        if ($request->hasFile('attachment')) {
-            $file = $request->file('attachment');
-            $mime = $file->getClientMimeType();
-            $ext = strtolower($file->getClientOriginalExtension());
+        // Validate MIME types manually for each file
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $mime = $file->getClientMimeType();
+                $ext = strtolower($file->getClientOriginalExtension());
 
-            if (!in_array($mime, $allowedMimes) && !in_array($ext, ['doc', 'docx', 'pdf'])) {
-                return back()->withErrors(['attachment' => 'Yalnız Word (.doc, .docx) və PDF (.pdf) faylları qəbul olunur.'])->withInput();
+                if (!in_array($mime, $allowedMimes) && !in_array($ext, $allowedExtensions)) {
+                    return back()->withErrors(['attachments' => 'Yalnız Word (.doc, .docx), PDF (.pdf) və şəkil (.jpg, .jpeg, .png) faylları qəbul olunur.'])->withInput();
+                }
             }
         }
 
-        // Check if "İcra olunub" is selected — attachment is required
+        // Check if "İcra olunub" is selected — at least one attachment is required
         $executionNote = ExecutionNote::find($validated['execution_note_id']);
         if ($executionNote && mb_stripos($executionNote->note, 'İcra olunub') !== false) {
-            if (!$request->hasFile('attachment')) {
-                return back()->withErrors(['attachment' => '"İcra olunub" statusu seçildikdə sübut sənəd yükləmək məcburidir.'])->withInput();
+            if (!$request->hasFile('attachments')) {
+                return back()->withErrors(['attachments' => '"İcra olunub" statusu seçildikdə ən azı bir sübut sənəd yükləmək məcburidir.'])->withInput();
             }
         }
 
@@ -249,19 +256,20 @@ class ExecutorDashboardController extends Controller
             'custom_note' => $validated['custom_note'] ?? null,
         ]);
 
-        if ($request->hasFile('attachment')) {
-            $file = $request->file('attachment');
-            $path = $file->store('execution-attachments/' . $legalAct->id, 'local');
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $path = $file->store('execution-attachments/' . $legalAct->id, 'local');
 
-            ExecutionAttachment::create([
-                'legal_act_id' => $legalAct->id,
-                'user_id' => $user->id,
-                'status_log_id' => $statusLog->id,
-                'file_path' => $path,
-                'original_name' => $file->getClientOriginalName(),
-                'mime_type' => $file->getClientMimeType(),
-                'file_size' => $file->getSize(),
-            ]);
+                ExecutionAttachment::create([
+                    'legal_act_id' => $legalAct->id,
+                    'user_id' => $user->id,
+                    'status_log_id' => $statusLog->id,
+                    'file_path' => $path,
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getClientMimeType(),
+                    'file_size' => $file->getSize(),
+                ]);
+            }
         }
 
         return redirect()->route('executor.index')->with('success', 'Status uğurla yeniləndi.');
@@ -281,6 +289,7 @@ class ExecutorDashboardController extends Controller
 
     /**
      * Preview an attachment inline in the browser.
+     * Images → served inline
      * PDF → served inline
      * DOCX/DOC → served as octet-stream for mammoth.js to fetch via arrayBuffer
      */
@@ -290,6 +299,19 @@ class ExecutorDashboardController extends Controller
 
         $fullPath = $this->getAttachmentPath($attachment);
         $ext = strtolower(pathinfo($attachment->original_name, PATHINFO_EXTENSION));
+
+        // Images — serve inline
+        if (in_array($ext, ['jpg', 'jpeg', 'png'])) {
+            $mimeMap = [
+                'jpg'  => 'image/jpeg',
+                'jpeg' => 'image/jpeg',
+                'png'  => 'image/png',
+            ];
+            return response()->file($fullPath, [
+                'Content-Type' => $mimeMap[$ext],
+                'Content-Disposition' => 'inline; filename="' . $attachment->original_name . '"',
+            ]);
+        }
 
         // PDF — serve inline in browser
         if ($ext === 'pdf') {
@@ -321,7 +343,6 @@ class ExecutorDashboardController extends Controller
                     'Content-Disposition' => 'inline; filename="preview.docx"',
                 ])->deleteFileAfterSend(true);
             } catch (\Exception $e) {
-                // If conversion fails, return error JSON
                 return response()->json([
                     'error' => true,
                     'message' => '.doc faylı çevrilə bilmədi: ' . $e->getMessage(),

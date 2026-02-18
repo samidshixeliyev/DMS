@@ -1,4 +1,5 @@
 /* ═══════════════ DOCUMENT PREVIEW ═══════════════
+ * Images (JPG, JPEG, PNG) → <img> inline
  * PDF  → iframe inline
  * DOCX → fetch raw bytes → mammoth.js → HTML
  * DOC  → fetch /preview (backend converts to docx) → mammoth.js → HTML
@@ -6,6 +7,8 @@
 function previewDocument(attId, fileName, mimeType) {
     var ext = fileName.split('.').pop().toLowerCase();
     var isPdf = (mimeType && mimeType.indexOf('pdf') !== -1) || ext === 'pdf';
+    var isImage = ['jpg', 'jpeg', 'png'].indexOf(ext) !== -1
+        || (mimeType && (mimeType.indexOf('image/jpeg') !== -1 || mimeType.indexOf('image/png') !== -1));
     var isDocx = ext === 'docx';
     var isDoc = ext === 'doc';
 
@@ -25,7 +28,21 @@ function previewDocument(attId, fileName, mimeType) {
     var previewModal = new bootstrap.Modal(document.getElementById('previewModal'));
     previewModal.show();
 
-    if (isPdf) {
+    if (isImage) {
+        // Image: show inline with <img>
+        document.getElementById('previewModalBody').innerHTML =
+            '<div style="text-align:center; padding:1rem; background:#f8fafc; min-height:300px; display:flex; align-items:center; justify-content:center;">' +
+                '<img src="/executor/attachments/' + attId + '/preview" ' +
+                    'alt="' + escapeHtml(fileName) + '" ' +
+                    'style="max-width:100%; max-height:75vh; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1);" ' +
+                    'onerror="this.parentElement.innerHTML=\'<div class=\\\'text-center py-5\\\'>' +
+                        '<i class=\\\'bi bi-exclamation-triangle text-warning\\\' style=\\\'font-size:3rem;\\\'></i>' +
+                        '<p class=\\\'mt-3 text-muted\\\'>Şəkil yüklənə bilmədi.</p>' +
+                        '<a href=/executor/attachments/' + attId + '/download class=\\\'btn btn-primary mt-2\\\'>' +
+                            '<i class=\\\'bi bi-download me-1\\\'></i> Endir</a></div>\'">' +
+            '</div>';
+
+    } else if (isPdf) {
         // PDF: iframe
         document.getElementById('previewModalBody').innerHTML =
             '<iframe id="previewFrame" src="/executor/attachments/' + attId + '/preview#toolbar=1"></iframe>';
@@ -51,10 +68,6 @@ function previewDocument(attId, fileName, mimeType) {
                 return mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
             })
             .then(function(result) {
-                var warnings = '';
-                if (result.messages && result.messages.length > 0) {
-                    // Ignore minor warnings
-                }
                 document.getElementById('previewModalBody').innerHTML =
                     '<div id="wordPreviewContainer">' +
                         '<div class="alert alert-info py-2 mb-3" style="font-size:0.8rem;">' +
@@ -99,6 +112,7 @@ function buildAttachmentHtml(attachments) {
         var ext = a.name.split('.').pop().toLowerCase();
         var iconClass = ext === 'pdf' ? 'bi-file-earmark-pdf text-danger'
             : (ext === 'doc' || ext === 'docx') ? 'bi-file-earmark-word text-primary'
+            : (ext === 'jpg' || ext === 'jpeg' || ext === 'png') ? 'bi-file-earmark-image text-success'
             : 'bi-file-earmark text-secondary';
         var sizeText = a.size ? ' <small class="text-muted">(' + a.size + ')</small>' : '';
         var safeFileName = escapeHtml(a.name).replace(/'/g, "\\'");
