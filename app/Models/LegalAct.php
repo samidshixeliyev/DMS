@@ -41,7 +41,7 @@ class LegalAct extends Model
         return $query->where('is_deleted', false);
     }
 
-    // Relationships
+    // ─── Relationships ──────────────────────────────────────────
 
     public function actType()
     {
@@ -53,9 +53,6 @@ class LegalAct extends Model
         return $this->belongsTo(IssuingAuthority::class, 'issued_by_id');
     }
 
-    /**
-     * Executors assigned to this legal act (many-to-many via pivot).
-     */
     public function executors()
     {
         return $this->belongsToMany(Executor::class, 'legal_act_executor')
@@ -63,56 +60,41 @@ class LegalAct extends Model
                     ->withTimestamps();
     }
 
-    /**
-     * Main executor for this legal act.
-     */
     public function mainExecutor()
     {
         return $this->executors()->wherePivot('role', 'main');
     }
 
-    /**
-     * Helper executor for this legal act.
-     */
     public function helperExecutor()
     {
         return $this->executors()->wherePivot('role', 'helper');
     }
 
-    /**
-     * Status logs for this legal act.
-     */
     public function statusLogs()
     {
         return $this->hasMany(ExecutorStatusLog::class)->orderBy('created_at', 'desc');
     }
 
-    /**
-     * Attachments for this legal act.
-     */
     public function attachments()
     {
         return $this->hasMany(ExecutionAttachment::class);
     }
 
-    /**
-     * Get the latest status log for this legal act.
-     */
     public function latestStatusLog()
     {
         return $this->hasOne(ExecutorStatusLog::class)->latestOfMany();
     }
 
-    /**
-     * User who inserted this legal act.
-     */
     public function insertedUser()
     {
         return $this->belongsTo(User::class, 'inserted_user_id');
     }
 
+    // ─── Approval-aware helpers ─────────────────────────────────
+
     /**
-     * Check if the legal act has been executed (latest status contains "İcra olundu").
+     * Check if the legal act has been FULLY executed.
+     * Requires: latest "İcra olunub" log is APPROVED by admin/manager.
      */
     public function getIsExecutedAttribute(): bool
     {
@@ -120,6 +102,45 @@ class LegalAct extends Model
         if (!$latest) return false;
 
         $noteText = $latest->executionNote?->note ?? '';
-        return $noteText && mb_stripos($noteText, 'İcra olunub') !== false;
+        $isIcraOlunub = $noteText && mb_stripos($noteText, 'İcra olunub') !== false;
+
+        // Only count as executed if the log is approved
+        return $isIcraOlunub && $latest->approval_status === ExecutorStatusLog::APPROVAL_APPROVED;
+    }
+
+    /**
+     * Check if there's a pending "İcra olunub" awaiting approval.
+     */
+    public function getIsPendingApprovalAttribute(): bool
+    {
+        $latest = $this->latestStatusLog;
+        if (!$latest) return false;
+
+        $noteText = $latest->executionNote?->note ?? '';
+        $isIcraOlunub = $noteText && mb_stripos($noteText, 'İcra olunub') !== false;
+
+        return $isIcraOlunub && $latest->approval_status === ExecutorStatusLog::APPROVAL_PENDING;
+    }
+
+    /**
+     * Check if the latest "İcra olunub" was rejected.
+     */
+    public function getIsRejectedAttribute(): bool
+    {
+        $latest = $this->latestStatusLog;
+        if (!$latest) return false;
+
+        $noteText = $latest->executionNote?->note ?? '';
+        $isIcraOlunub = $noteText && mb_stripos($noteText, 'İcra olunub') !== false;
+
+        return $isIcraOlunub && $latest->approval_status === ExecutorStatusLog::APPROVAL_REJECTED;
+    }
+
+    /**
+     * Get pending approval logs for this legal act.
+     */
+    public function pendingApprovalLogs()
+    {
+        return $this->statusLogs()->where('approval_status', ExecutorStatusLog::APPROVAL_PENDING);
     }
 }

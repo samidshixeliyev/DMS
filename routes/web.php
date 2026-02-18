@@ -10,6 +10,7 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\ExecutionNoteController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ExecutorDashboardController;
+use App\Http\Controllers\ApprovalController;
 
 Route::get('login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('login', [AuthController::class, 'login'])->name('login.submit');
@@ -32,6 +33,15 @@ Route::middleware('auth')->group(function () {
         Route::post('executor/legal-acts/{legalAct}/status', [ExecutorDashboardController::class, 'storeStatus'])->name('executor.store-status');
         Route::get('executor/attachments/{attachment}/download', [ExecutorDashboardController::class, 'downloadAttachment'])->name('executor.download-attachment');
         Route::get('executor/attachments/{attachment}/preview', [ExecutorDashboardController::class, 'previewAttachment'])->name('executor.preview-attachment');
+    });
+
+    // ─── Approval Management (Admin / Manager only) ─────────────
+    Route::middleware('role:admin,manager')->group(function () {
+        Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+        Route::post('approvals/load', [ApprovalController::class, 'load'])->name('approvals.load');
+        Route::get('approvals/{legalAct}', [ApprovalController::class, 'show'])->name('approvals.show');
+        Route::post('approvals/{statusLog}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
+        Route::post('approvals/{statusLog}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
     });
 
     // ─── Legal Acts (Admin / Manager view) ──────────────────────

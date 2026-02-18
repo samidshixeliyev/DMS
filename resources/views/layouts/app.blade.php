@@ -12,40 +12,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
         rel="stylesheet">
 
-    <!-- ──────────────────────────────────────────────
-         1) Bootstrap CSS — MUST come first, before Tailwind
-         The index page depends heavily on Bootstrap grid,
-         components (.card, .modal, .btn, .table, .badge…)
-         and the DataTables Bootstrap5 theme.
-    ─────────────────────────────────────────────── -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-
-    <!-- DataTables + Bootstrap5 theme -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/fixedcolumns/4.3.0/css/fixedColumns.bootstrap5.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
-
-    <!-- Select2 + Bootstrap5 theme -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
         rel="stylesheet">
-
-    <!-- Flatpickr -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
-    <!-- ──────────────────────────────────────────────
-         2) Tailwind CDN — loaded with preflight DISABLED
-         so it doesn't nuke Bootstrap's base styles.
-         We use Tailwind only for the sidebar layout.
-    ─────────────────────────────────────────────── -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
             corePlugins: {
-                preflight: false   // ← critical: don't reset Bootstrap
+                preflight: false
             },
             theme: {
                 extend: {
@@ -621,7 +602,7 @@
                 </div>
             </div>
 
-            <nav style="flex:1; padding:0.75rem 0.5rem; position:relative; z-index:1;">
+            <nav style="flex:1; padding:0.75rem 0.5rem; position:relative; z-index:1; overflow-y:auto;">
 
                 <p class="nav-label"
                     style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3); padding:4px 12px 8px; margin:0;">
@@ -638,15 +619,44 @@
                 </div>
 
                 @if(auth()->user()->user_role === 'executor' || auth()->user()->canManage())
-                <div class="nav-item-wrapper" style="margin-bottom:2px;">
-                    <a href="{{ route('executor.index') }}"
-                        class="nav-link-inner {{ request()->routeIs('executor.*') ? 'sidebar-nav-active' : '' }}"
-                        style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
-                    <i class="bi bi-kanban" style="font-size:1rem; width:20px; text-align:center;"></i>
-                <span class="sidebar-text">İcraçı Paneli</span>
-                </a>
-                    <span class="sidebar-tooltip">İcraçı Paneli</span>
-                  </div>
+                    <div class="nav-item-wrapper" style="margin-bottom:2px;">
+                        <a href="{{ route('executor.index') }}"
+                            class="nav-link-inner {{ request()->routeIs('executor.*') ? 'sidebar-nav-active' : '' }}"
+                            style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
+                            <i class="bi bi-kanban" style="font-size:1rem; width:20px; text-align:center;"></i>
+                            <span class="sidebar-text">İcraçı Paneli</span>
+                        </a>
+                        <span class="sidebar-tooltip">İcraçı Paneli</span>
+                    </div>
+                @endif
+
+                @if(auth()->user()->canManage())
+                    <div class="nav-item-wrapper" style="margin-bottom:2px;">
+                        <a href="{{ route('approvals.index') }}"
+                            class="nav-link-inner {{ request()->routeIs('approvals.*') ? 'sidebar-nav-active' : '' }}"
+                            style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
+                            <i class="bi bi-check2-square" style="font-size:1rem; width:20px; text-align:center;"></i>
+                            <span class="sidebar-text">Təsdiq Gözləyənlər
+                                @php
+                                    // Use PHP mb_stripos to find "İcra olunub" note IDs
+                                    // This avoids SQL Server LIKE collation issues with Turkish İ
+                                    $icraNoteIds = \App\Models\ExecutionNote::all()
+                                        ->filter(fn($n) => mb_stripos($n->note, 'İcra olunub') !== false || mb_stripos($n->note, 'icra olunub') !== false)
+                                        ->pluck('id')
+                                        ->toArray();
+                                    $pendingCount = count($icraNoteIds) > 0
+                                        ? \App\Models\ExecutorStatusLog::where('approval_status', 'pending')
+                                            ->whereIn('execution_note_id', $icraNoteIds)
+                                            ->count()
+                                        : 0;
+                                @endphp
+                                @if($pendingCount > 0)
+                                    <span class="badge bg-danger ms-1" style="font-size:0.65rem;">{{ $pendingCount }}</span>
+                                @endif
+                            </span>
+                        </a>
+                        <span class="sidebar-tooltip">Təsdiq Gözləyənlər</span>
+                    </div>
                 @endif
 
                 <div style="height:1px; background:rgba(255,255,255,0.08); margin:0.5rem 0.75rem;"></div>
@@ -671,7 +681,7 @@
                         <i class="bi bi-building-check" style="font-size:1rem; width:20px; text-align:center;"></i>
                         <span class="sidebar-text">Kim qəbul edib</span>
                     </a>
-                    <span class="sidebar-tooltip">Kim qəbul edibr</span>
+                    <span class="sidebar-tooltip">Kim qəbul edib</span>
                 </div>
 
                 <div class="nav-item-wrapper" style="margin-bottom:2px;">

@@ -14,37 +14,83 @@ class ExecutorStatusLog extends Model
         'user_id',
         'execution_note_id',
         'custom_note',
+        'approval_status',
+        'approved_by',
+        'approval_note',
+        'approved_at',
     ];
 
-    /**
-     * The legal act this log belongs to.
-     */
+    protected $casts = [
+        'approved_at' => 'datetime',
+    ];
+
+    // ─── Approval status constants ──────────────────────────────
+    const APPROVAL_PENDING  = 'pending';
+    const APPROVAL_APPROVED = 'approved';
+    const APPROVAL_REJECTED = 'rejected';
+
+    // ─── Relationships ──────────────────────────────────────────
+
     public function legalAct()
     {
         return $this->belongsTo(LegalAct::class);
     }
 
-    /**
-     * The user who created this log.
-     */
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * The predefined execution note selected.
-     */
     public function executionNote()
     {
         return $this->belongsTo(ExecutionNote::class);
     }
 
-    /**
-     * Attachments uploaded with this status change.
-     */
     public function attachments()
     {
         return $this->hasMany(ExecutionAttachment::class, 'status_log_id');
+    }
+
+    public function approvedByUser()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    // ─── Helpers ────────────────────────────────────────────────
+
+    public function isPending(): bool
+    {
+        return $this->approval_status === self::APPROVAL_PENDING;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approval_status === self::APPROVAL_APPROVED;
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->approval_status === self::APPROVAL_REJECTED;
+    }
+
+    /**
+     * Check if this log's execution note contains "İcra olunub".
+     */
+    public function isExecutionComplete(): bool
+    {
+        $noteText = $this->executionNote?->note ?? '';
+        return $noteText && mb_stripos($noteText, 'İcra olunub') !== false;
+    }
+
+    // ─── Scopes ─────────────────────────────────────────────────
+
+    public function scopePending($query)
+    {
+        return $query->where('approval_status', self::APPROVAL_PENDING);
+    }
+
+    public function scopeApproved($query)
+    {
+        return $query->where('approval_status', self::APPROVAL_APPROVED);
     }
 }
