@@ -95,23 +95,106 @@ class LegalActController extends Controller
 
         $data = [];
         foreach ($results as $i => $act) {
-            $latestLog = $act->latestStatusLog;
-            $noteText = $latestLog?->executionNote?->note ?? '';
+            $mainExecutor = $act->executors->where('pivot.role', 'main')->first();
+            $helperExecutor = $act->executors->where('pivot.role', 'helper')->first();
 
-            $isExecuted = $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_APPROVED;
-            $isPending = $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_PENDING;
-            $isRejected = $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_REJECTED;
-            $isPartial = $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_PARTIAL;
+            $executorHtml = $mainExecutor ? e($mainExecutor->name) : '-';
+            if ($helperExecutor) {
+                $executorHtml .= '<br><small class="text-muted">Köməkçi: ' . e($helperExecutor->name) . '</small>';
+            }
+            $departmentName = $mainExecutor?->department?->name ?? '-';
 
-            $daysLeft = null;
+            $executorLogMap = [];
+            foreach ($act->statusLogs as $log) {
+                if ($log->user && $log->user->executor_id) {
+                    $exId = $log->user->executor_id;
+                    if (!isset($executorLogMap[$exId])) {
+                        $executorLogMap[$exId] = $log;
+                    }
+                }
+            }
+
+            $noteHtml = '-';
+            $allApproved = true;
+            $anyPending = false;
+            $anyPartial = false;
+            $anyRejected = false;
+
+            $executorsToShow = [];
+            if ($mainExecutor) {
+                $executorsToShow[] = ['executor' => $mainExecutor, 'label' => 'Əsas'];
+            }
+            if ($helperExecutor) {
+                $executorsToShow[] = ['executor' => $helperExecutor, 'label' => 'Köməkçi'];
+            }
+
+            if (count($executorsToShow) > 0) {
+                $noteHtml = '';
+
+                foreach ($executorsToShow as $idx => $entry) {
+                    $executor = $entry['executor'];
+                    $label = $entry['label'];
+
+                    $executorLog = $executorLogMap[$executor->id] ?? null;
+
+                    $status = $executorLog?->approval_status;
+                    $logNote = $executorLog?->executionNote?->note ?? '';
+
+                    if ($status !== ExecutorStatusLog::APPROVAL_APPROVED) {
+                        $allApproved = false;
+                    }
+                    if ($status === ExecutorStatusLog::APPROVAL_PENDING) {
+                        $anyPending = true;
+                    }
+                    if ($status === ExecutorStatusLog::APPROVAL_PARTIAL) {
+                        $anyPartial = true;
+                    }
+                    if ($status === ExecutorStatusLog::APPROVAL_REJECTED) {
+                        $anyRejected = true;
+                    }
+                    if (!$executorLog) {
+                        $allApproved = false;
+                    }
+
+                    if ($idx > 0) {
+                        $noteHtml .= '<hr class="my-1" style="opacity:0.25">';
+                    }
+
+                    $noteHtml .= '<div class="mb-1">';
+                    $noteHtml .= '<small class="text-muted fw-semibold">' . e($label) . ': ' . e($executor->name) . '</small><br>';
+
+                    if ($executorLog) {
+                        if ($status === ExecutorStatusLog::APPROVAL_APPROVED) {
+                            $noteHtml .= '<span class="badge bg-success">İcra olunub ✓</span>';
+                        } elseif ($status === ExecutorStatusLog::APPROVAL_PENDING) {
+                            $noteHtml .= '<span class="badge bg-warning text-dark">Təsdiq gözləyir</span>';
+                        } elseif ($status === ExecutorStatusLog::APPROVAL_REJECTED) {
+                            $noteHtml .= '<span class="badge bg-danger">Rədd edilib</span>';
+                        } elseif ($status === ExecutorStatusLog::APPROVAL_PARTIAL) {
+                            $noteHtml .= '<span class="badge bg-info text-dark">Natamam</span>';
+                        } else {
+                            // Has a log but no approval_status (NULL) — show the note text
+                            $noteHtml .= '<span class="badge bg-secondary">' . e(Str::limit($logNote ?: 'İcradadır', 25)) . '</span>';
+                        }
+                    } else {
+                        // No log at all for this executor
+                        $noteHtml .= '<span class="badge bg-light text-dark border">Status yoxdur</span>';
+                    }
+
+                    $noteHtml .= '</div>';
+                }
+            }
+
             $rowClass = '';
-
-            if ($isExecuted) {
+            $daysLeft = null;
+            if ($allApproved && count($executorsToShow) > 0) {
                 $rowClass = 'row-executed';
-            } elseif ($isPending) {
+            } elseif ($anyPending) {
                 $rowClass = 'row-pending';
-            } elseif ($isPartial) {
+            } elseif ($anyPartial) {
                 $rowClass = 'row-partial';
+            } elseif ($anyRejected) {
+                $rowClass = 'row-overdue';
             } elseif ($act->execution_deadline) {
                 $daysLeft = (int) now()->startOfDay()->diffInDays($act->execution_deadline->startOfDay(), false);
                 if ($daysLeft < 0) {
@@ -124,42 +207,18 @@ class LegalActController extends Controller
             $deadlineHtml = '-';
             if ($act->execution_deadline) {
                 $deadlineHtml = $act->execution_deadline->format('d.m.Y');
-                if (!$isExecuted && !$isPending) {
-                    if ($daysLeft !== null && $daysLeft < 0) {
+                $dlDaysLeft = (int) now()->startOfDay()->diffInDays($act->execution_deadline->startOfDay(), false);
+                if (!$allApproved && !$anyPending) {
+                    if ($dlDaysLeft < 0) {
                         $deadlineHtml .= '<br><span class="badge bg-danger text-white mt-1">İcra müddəti bitib</span>';
-                    } elseif ($daysLeft !== null && $daysLeft <= 3) {
-                        $deadlineHtml .= '<br><span class="badge bg-warning text-dark mt-1">' . $daysLeft . ' gün qalıb</span>';
+                    } elseif ($dlDaysLeft <= 3) {
+                        $deadlineHtml .= '<br><span class="badge bg-warning text-dark mt-1">' . $dlDaysLeft . ' gün qalıb</span>';
                     }
                 }
             }
 
-            // Status from latest log — approval aware
-            $noteHtml = '-';
-            if ($latestLog) {
-                if ($isExecuted) {
-                    $noteHtml = '<span class="badge bg-success">İcra olunub ✓</span>';
-                } elseif ($isPending) {
-                    $noteHtml = '<span class="badge bg-warning text-dark">Təsdiq gözləyir</span>';
-                } elseif ($isRejected) {
-                    $noteHtml = '<span class="badge bg-danger">Rədd edilib</span>';
-                } elseif ($isPartial) {
-                    $partialLogs = $act->statusLogs()->where('approval_status', 'partial')->with('user')->get();
-                    $submittedNames = $partialLogs->pluck('user.name')->implode(', ');
-                    $noteHtml = '<span class="badge bg-info text-dark">Natamam</span>'
-                        . '<br><small class="text-muted">Göndərən: ' . e($submittedNames) . '</small>';
-                } else {
-                    $noteHtml = '<span class="badge bg-secondary">' . e(Str::limit($noteText, 25)) . '</span>';
-                }
-            }
-
-            // Executors
-            $mainExecutor = $act->executors->where('pivot.role', 'main')->first();
-            $helperExecutor = $act->executors->where('pivot.role', 'helper')->first();
-            $executorHtml = $mainExecutor ? e($mainExecutor->name) : '-';
-            if ($helperExecutor) {
-                $executorHtml .= '<br><small class="text-muted">Köməkçi: ' . e($helperExecutor->name) . '</small>';
-            }
-            $departmentName = $mainExecutor?->department?->name ?? '-';
+            $latestLog = $act->latestStatusLog;
+            $isPending = $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_PENDING;
 
             $data[] = [
                 'DT_RowClass' => $rowClass,
@@ -181,7 +240,7 @@ class LegalActController extends Controller
                 'insertedUser' => $act->insertedUser ? $act->insertedUser->name . ' ' . $act->insertedUser->surname : '-',
                 'canEdit' => ($userId === $act->inserted_user_id) || $canManage,
                 'canDelete' => $isAdmin,
-                'hasPendingApproval' => $isPending,
+                'hasPendingApproval' => $anyPending,
                 'pendingLogId' => $isPending ? $latestLog?->id : null,
             ];
         }
@@ -236,6 +295,10 @@ class LegalActController extends Controller
             'statusLogs.user',
             'statusLogs.attachments',
             'statusLogs.approvedByUser',
+            'statusLogs' => function ($q) {
+                $q->with('executionNote', 'user');
+            },
+            'executors.users',
             'attachments.user',
             'insertedUser',
         ]);
@@ -385,6 +448,10 @@ class LegalActController extends Controller
             'executors.department',
             'latestStatusLog.executionNote',
             'latestStatusLog.approvedByUser',
+            'statusLogs' => function ($q) {
+                $q->with('executionNote', 'user');
+            },
+            'executors.users',
             'insertedUser',
         ])
             ->active();

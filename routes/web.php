@@ -39,11 +39,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:admin,manager')->group(function () {
         Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals.index');
         Route::post('approvals/load', [ApprovalController::class, 'load'])->name('approvals.load');
-        Route::get('approvals/{legalAct}', [ApprovalController::class, 'show'])->name('approvals.show');
         Route::post('approvals/{statusLog}/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
         Route::post('approvals/{statusLog}/reject', [ApprovalController::class, 'reject'])->name('approvals.reject');
+        Route::get('approvals/{legalAct}', [ApprovalController::class, 'show'])->name('approvals.show');
     });
-
     // ─── Legal Acts (Admin / Manager view) ──────────────────────
     Route::post('legal-acts/load', [LegalActController::class, 'load'])->name('legal-acts.load');
     Route::get('legal-acts/export/excel', [LegalActController::class, 'exportExcel'])->name('legal-acts.export.excel');

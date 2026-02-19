@@ -602,7 +602,7 @@
                 </div>
             </div>
 
-            <nav style="flex:1; padding:0.75rem 0.5rem; position:relative; z-index:1; overflow-y:auto;">
+            <nav style="flex:1; padding:0.75rem 0.5rem; position:relative; z-index:1; overflow-x:hidden;">
 
                 <p class="nav-label"
                     style="font-size:0.62rem; font-weight:700; text-transform:uppercase; letter-spacing:2px; color:rgba(255,255,255,0.3); padding:4px 12px 8px; margin:0;">

@@ -95,4 +95,13 @@ class User extends Authenticatable
     {
         return "{$this->name} {$this->surname}";
     }
+
+    public function executorPivot($legalActId)
+    {
+        return \App\Models\LegalAct::find($legalActId)
+            ->executors()
+            ->where('executor_id', $this->id)
+            ->first()
+                ?->pivot;
+    }
 }
