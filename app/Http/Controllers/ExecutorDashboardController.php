@@ -30,6 +30,11 @@ class ExecutorDashboardController extends Controller
         return $noteId && in_array($noteId, $this->getIcraOlunubNoteIds());
     }
 
+    private function isQismenIcraNote(int $noteId): bool
+    {
+        return ExecutionNote::where('id', $noteId)->where('note', 'like', '%qismən icra olunub%')->exists();
+    }
+
     public function index()
     {
         $user = auth()->user();
@@ -88,14 +93,16 @@ class ExecutorDashboardController extends Controller
             $noteText = $latestLog?->executionNote?->note ?? '';
 
             $isExecuted = $isIcraOlunub && $latestLog->approval_status === 'approved';
-            $isPending  = $isIcraOlunub && $latestLog->approval_status === 'pending';
+            $isPending = $isIcraOlunub && $latestLog->approval_status === 'pending';
             $isRejected = $isIcraOlunub && $latestLog->approval_status === 'rejected';
 
             $daysLeft = null;
             $rowClass = '';
-            if ($isExecuted) { $rowClass = 'row-executed'; }
-            elseif ($isPending) { $rowClass = 'row-pending'; }
-            elseif ($act->execution_deadline) {
+            if ($isExecuted) {
+                $rowClass = 'row-executed';
+            } elseif ($isPending) {
+                $rowClass = 'row-pending';
+            } elseif ($act->execution_deadline) {
                 $daysLeft = (int) now()->startOfDay()->diffInDays($act->execution_deadline->startOfDay(), false);
                 $rowClass = $daysLeft < 0 ? 'row-overdue' : ($daysLeft <= 3 ? 'row-warning' : '');
             }
@@ -104,33 +111,46 @@ class ExecutorDashboardController extends Controller
             if ($act->execution_deadline) {
                 $deadlineHtml = $act->execution_deadline->format('d.m.Y');
                 if (!$isExecuted && !$isPending && $daysLeft !== null) {
-                    if ($daysLeft < 0) $deadlineHtml .= '<br><span class="badge bg-danger text-white mt-1">İcra müddəti bitib</span>';
-                    elseif ($daysLeft <= 3) $deadlineHtml .= '<br><span class="badge bg-warning text-dark mt-1">' . $daysLeft . ' gün qalıb</span>';
+                    if ($daysLeft < 0)
+                        $deadlineHtml .= '<br><span class="badge bg-danger text-white mt-1">İcra müddəti bitib</span>';
+                    elseif ($daysLeft <= 3)
+                        $deadlineHtml .= '<br><span class="badge bg-warning text-dark mt-1">' . $daysLeft . ' gün qalıb</span>';
                 }
             }
 
             $statusHtml = '-';
             if ($latestLog) {
-                if ($isExecuted) { $statusHtml = '<span class="badge bg-success">İcra olunub ✓</span>'; }
-                elseif ($isPending) { $statusHtml = '<span class="badge bg-warning text-dark">Təsdiq gözləyir</span>'; }
-                elseif ($isRejected) {
+                if ($isExecuted) {
+                    $statusHtml = '<span class="badge bg-success">İcra olunub ✓</span>';
+                } elseif ($isPending) {
+                    $statusHtml = '<span class="badge bg-warning text-dark">Təsdiq gözləyir</span>';
+                } elseif ($isRejected) {
                     $statusHtml = '<span class="badge bg-danger">Rədd edilib</span>';
-                    if ($latestLog->approval_note) $statusHtml .= '<br><small class="text-danger">' . e(Str::limit($latestLog->approval_note, 30)) . '</small>';
+                    if ($latestLog->approval_note)
+                        $statusHtml .= '<br><small class="text-danger">' . e(Str::limit($latestLog->approval_note, 30)) . '</small>';
                 } else {
                     $statusHtml = '<span class="badge bg-secondary">' . e(Str::limit($noteText, 25)) . '</span>';
                 }
-                if ($latestLog->custom_note && !$isRejected) $statusHtml .= '<br><small class="text-muted">' . e(Str::limit($latestLog->custom_note, 30)) . '</small>';
+                if ($latestLog->custom_note && !$isRejected)
+                    $statusHtml .= '<br><small class="text-muted">' . e(Str::limit($latestLog->custom_note, 30)) . '</small>';
             }
 
             $pivot = $act->executors->where('id', $user->executor_id)->first()?->pivot;
             $roleHtml = $pivot?->role === 'main' ? '<span class="badge bg-primary">Əsas</span>' : '<span class="badge bg-info">Köməkçi</span>';
 
             $data[] = [
-                'DT_RowClass' => $rowClass, 'id' => $act->id, 'rowNum' => $start + $i + 1,
-                'actType' => $act->actType?->name ?? '-', 'legalActNumber' => $act->legal_act_number ?? '-',
-                'legalActDate' => $act->legal_act_date?->format('d.m.Y') ?? '-', 'issuingAuthority' => $act->issuingAuthority?->name ?? '-',
-                'summary' => Str::limit($act->summary, 80) ?? '-', 'taskNumber' => $act->task_number ?? '-',
-                'deadlineHtml' => $deadlineHtml, 'statusHtml' => $statusHtml, 'roleHtml' => $roleHtml,
+                'DT_RowClass' => $rowClass,
+                'id' => $act->id,
+                'rowNum' => $start + $i + 1,
+                'actType' => $act->actType?->name ?? '-',
+                'legalActNumber' => $act->legal_act_number ?? '-',
+                'legalActDate' => $act->legal_act_date?->format('d.m.Y') ?? '-',
+                'issuingAuthority' => $act->issuingAuthority?->name ?? '-',
+                'summary' => Str::limit($act->summary, 80) ?? '-',
+                'taskNumber' => $act->task_number ?? '-',
+                'deadlineHtml' => $deadlineHtml,
+                'statusHtml' => $statusHtml,
+                'roleHtml' => $roleHtml,
                 'canChangeStatus' => !$isExecuted && !$isPending,
             ];
         }
@@ -148,19 +168,33 @@ class ExecutorDashboardController extends Controller
         $helperExecutor = $legalAct->executors->where('pivot.role', 'helper')->first();
 
         return response()->json([
-            'id' => $legalAct->id, 'act_type' => $legalAct->actType?->name, 'legal_act_number' => $legalAct->legal_act_number,
-            'legal_act_date' => $legalAct->legal_act_date?->format('d.m.Y'), 'summary' => $legalAct->summary,
-            'issuing_authority' => $legalAct->issuingAuthority?->name, 'main_executor' => $mainExecutor?->name,
-            'main_executor_department' => $mainExecutor?->department?->name, 'helper_executor' => $helperExecutor?->name,
-            'helper_executor_department' => $helperExecutor?->department?->name, 'task_number' => $legalAct->task_number,
-            'task_description' => $legalAct->task_description, 'execution_deadline' => $legalAct->execution_deadline?->format('d.m.Y'),
-            'related_document_number' => $legalAct->related_document_number, 'related_document_date' => $legalAct->related_document_date?->format('d.m.Y'),
-            'inserted_user' => $legalAct->insertedUser?->full_name, 'created_at' => $legalAct->created_at?->format('d.m.Y H:i'),
+            'id' => $legalAct->id,
+            'act_type' => $legalAct->actType?->name,
+            'legal_act_number' => $legalAct->legal_act_number,
+            'legal_act_date' => $legalAct->legal_act_date?->format('d.m.Y'),
+            'summary' => $legalAct->summary,
+            'issuing_authority' => $legalAct->issuingAuthority?->name,
+            'main_executor' => $mainExecutor?->name,
+            'main_executor_department' => $mainExecutor?->department?->name,
+            'helper_executor' => $helperExecutor?->name,
+            'helper_executor_department' => $helperExecutor?->department?->name,
+            'task_number' => $legalAct->task_number,
+            'task_description' => $legalAct->task_description,
+            'execution_deadline' => $legalAct->execution_deadline?->format('d.m.Y'),
+            'related_document_number' => $legalAct->related_document_number,
+            'related_document_date' => $legalAct->related_document_date?->format('d.m.Y'),
+            'inserted_user' => $legalAct->insertedUser?->full_name,
+            'created_at' => $legalAct->created_at?->format('d.m.Y H:i'),
             'status_logs' => $legalAct->statusLogs->map(fn($log) => [
-                'id' => $log->id, 'user' => $log->user?->full_name, 'note' => $log->executionNote?->note,
-                'custom_note' => $log->custom_note, 'date' => $log->created_at?->format('d.m.Y H:i'),
-                'approval_status' => $log->approval_status, 'approval_note' => $log->approval_note,
-                'approved_by' => $log->approvedByUser?->full_name, 'approved_at' => $log->approved_at?->format('d.m.Y H:i'),
+                'id' => $log->id,
+                'user' => $log->user?->full_name,
+                'note' => $log->executionNote?->note,
+                'custom_note' => $log->custom_note,
+                'date' => $log->created_at?->format('d.m.Y H:i'),
+                'approval_status' => $log->approval_status,
+                'approval_note' => $log->approval_note,
+                'approved_by' => $log->approvedByUser?->full_name,
+                'approved_at' => $log->approved_at?->format('d.m.Y H:i'),
                 'attachments' => $log->attachments->map(fn($att) => ['id' => $att->id, 'name' => $att->original_name, 'size' => round($att->file_size / 1024, 1) . ' KB', 'mime_type' => $att->mime_type]),
             ]),
         ]);
@@ -179,6 +213,8 @@ class ExecutorDashboardController extends Controller
         ]);
 
         $isIcraOlunub = $this->isIcraOlunubNote((int) $validated['execution_note_id']);
+        $isQismenIcra = $this->isQismenIcraNote((int) $validated['execution_note_id']);
+        $requiresBothExecutors = $isIcraOlunub || $isQismenIcra;
 
         // Block if already pending or approved
         $latestLog = $legalAct->latestStatusLog()->with('executionNote')->first();
@@ -192,12 +228,26 @@ class ExecutorDashboardController extends Controller
             }
         }
 
+        // Block if this user already submitted for a partial round
+        if ($requiresBothExecutors) {
+            $existingPartial = ExecutorStatusLog::where('legal_act_id', $legalAct->id)
+                ->where('user_id', $user->id)
+                ->where('approval_status', 'partial')
+                ->first();
+            if ($existingPartial) {
+                return back()->withErrors(['general' => 'Siz artıq status göndərmisiniz. Digər icraçının cavabı gözlənilir.']);
+            }
+        }
+
         // STRICT: İcra olunub requires at least 1 file
         if ($isIcraOlunub) {
             $hasValidFiles = false;
             if ($request->hasFile('attachments')) {
                 foreach ($request->file('attachments') as $file) {
-                    if ($file && $file->isValid()) { $hasValidFiles = true; break; }
+                    if ($file && $file->isValid()) {
+                        $hasValidFiles = true;
+                        break;
+                    }
                 }
             }
             if (!$hasValidFiles) {
@@ -210,33 +260,70 @@ class ExecutorDashboardController extends Controller
         $allowedExtensions = ['doc', 'docx', 'pdf', 'jpg', 'jpeg', 'png'];
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                if (!$file || !$file->isValid()) continue;
+                if (!$file || !$file->isValid())
+                    continue;
                 if (!in_array($file->getClientMimeType(), $allowedMimes) && !in_array(strtolower($file->getClientOriginalExtension()), $allowedExtensions)) {
                     return back()->withErrors(['attachments' => 'Yalnız Word, PDF və şəkil faylları qəbul olunur.'])->withInput();
                 }
             }
         }
 
+        // Determine approval_status
+        $approvalStatus = null;
+        if ($requiresBothExecutors) {
+            $hasHelper = $legalAct->executors()->wherePivot('role', 'helper')->exists();
+            if ($hasHelper) {
+                // Check if the OTHER executor already submitted as partial
+                $otherPartial = ExecutorStatusLog::where('legal_act_id', $legalAct->id)
+                    ->where('user_id', '!=', $user->id)
+                    ->where('approval_status', 'partial')
+                    ->first();
+                if ($otherPartial) {
+                    // Both done — promote both to pending
+                    $approvalStatus = 'pending';
+                    $otherPartial->update(['approval_status' => 'pending']);
+                } else {
+                    $approvalStatus = 'partial';
+                }
+            } else {
+                // No helper — go straight to pending
+                $approvalStatus = $isIcraOlunub ? 'pending' : null;
+            }
+        }
+
         $statusLog = ExecutorStatusLog::create([
-            'legal_act_id' => $legalAct->id, 'user_id' => $user->id,
+            'legal_act_id' => $legalAct->id,
+            'user_id' => $user->id,
             'execution_note_id' => $validated['execution_note_id'],
             'custom_note' => $validated['custom_note'] ?? null,
-            'approval_status' => $isIcraOlunub ? 'pending' : null,
+            'approval_status' => $approvalStatus,
         ]);
 
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
-                if (!$file || !$file->isValid()) continue;
+                if (!$file || !$file->isValid())
+                    continue;
                 $path = $file->store('execution-attachments/' . $legalAct->id, 'local');
                 ExecutionAttachment::create([
-                    'legal_act_id' => $legalAct->id, 'user_id' => $user->id, 'status_log_id' => $statusLog->id,
-                    'file_path' => $path, 'original_name' => $file->getClientOriginalName(),
-                    'mime_type' => $file->getClientMimeType(), 'file_size' => $file->getSize(),
+                    'legal_act_id' => $legalAct->id,
+                    'user_id' => $user->id,
+                    'status_log_id' => $statusLog->id,
+                    'file_path' => $path,
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getClientMimeType(),
+                    'file_size' => $file->getSize(),
                 ]);
             }
         }
 
-        return redirect()->route('executor.index')->with('success', $isIcraOlunub ? 'İcra qeydi göndərildi. Admin/menecer təsdiqi gözlənilir.' : 'Status uğurla yeniləndi.');
+        $successMsg = 'Status uğurla yeniləndi.';
+        if ($requiresBothExecutors && $approvalStatus === 'partial') {
+            $successMsg = 'Status göndərildi. Digər icraçının cavabı gözlənilir.';
+        } elseif ($requiresBothExecutors && $approvalStatus === 'pending') {
+            $successMsg = 'Hər iki icraçı status göndərdi. Admin/menecer təsdiqi gözlənilir.';
+        }
+
+        return redirect()->route('executor.index')->with('success', $successMsg);
     }
 
     public function downloadAttachment(ExecutionAttachment $attachment)
@@ -277,7 +364,8 @@ class ExecutorDashboardController extends Controller
     private function getAttachmentPath(ExecutionAttachment $attachment): string
     {
         foreach ([storage_path('app/private/' . $attachment->file_path), storage_path('app/' . $attachment->file_path)] as $path) {
-            if (file_exists($path)) return $path;
+            if (file_exists($path))
+                return $path;
         }
         abort(404, 'Fayl tapılmadı.');
     }
@@ -285,13 +373,17 @@ class ExecutorDashboardController extends Controller
     private function authorizeAttachmentAccess(ExecutionAttachment $attachment): void
     {
         $user = auth()->user();
-        if ($attachment->legalAct && $user->isExecutor()) $this->authorizeAccess($attachment->legalAct, $user);
+        if ($attachment->legalAct && $user->isExecutor())
+            $this->authorizeAccess($attachment->legalAct, $user);
     }
 
     private function authorizeAccess(LegalAct $legalAct, $user): void
     {
-        if ($user->canManage()) return;
-        if (!$user->executor_id) abort(403, 'İcraçı profiliniz yoxdur.');
-        if (!$legalAct->executors()->where('executors.id', $user->executor_id)->exists()) abort(403, 'Bu sənədə giriş icazəniz yoxdur.');
+        if ($user->canManage())
+            return;
+        if (!$user->executor_id)
+            abort(403, 'İcraçı profiliniz yoxdur.');
+        if (!$legalAct->executors()->where('executors.id', $user->executor_id)->exists())
+            abort(403, 'Bu sənədə giriş icazəniz yoxdur.');
     }
 }

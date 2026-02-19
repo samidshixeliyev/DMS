@@ -586,7 +586,7 @@
                 style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border-bottom:1px solid rgba(255,255,255,0.1); position:relative; z-index:1;">
                 <div
                     style="width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#00b4d8,#06d6a0); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:0.82rem; font-weight:700; box-shadow:0 2px 8px rgba(0,180,216,0.25);">
-                    {{ substr(auth()->user()->name, 0, 1) }}{{ substr(auth()->user()->surname, 0, 1) }}
+                    {{ mb_substr(auth()->user()->name, 0, 1) }}{{ mb_substr(auth()->user()->surname, 0, 1) }}
                 </div>
                 <div class="user-details sidebar-text" style="min-width:0;">
                     <p

@@ -64,13 +64,27 @@ class LegalActController extends Controller
         $orderDir = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
 
         switch ($orderCol) {
-            case 1: $query->orderBy('legal_act_number', $orderDir); break;
-            case 2: $query->orderBy('legal_act_date', $orderDir); break;
-            case 5: $query->orderBy('task_number', $orderDir); break;
-            case 9: $query->orderBy('execution_deadline', $orderDir); break;
-            case 11: $query->orderBy('related_document_number', $orderDir); break;
-            case 12: $query->orderBy('related_document_date', $orderDir); break;
-            default: $query->orderBy('id', 'desc'); break;
+            case 1:
+                $query->orderBy('legal_act_number', $orderDir);
+                break;
+            case 2:
+                $query->orderBy('legal_act_date', $orderDir);
+                break;
+            case 5:
+                $query->orderBy('task_number', $orderDir);
+                break;
+            case 9:
+                $query->orderBy('execution_deadline', $orderDir);
+                break;
+            case 11:
+                $query->orderBy('related_document_number', $orderDir);
+                break;
+            case 12:
+                $query->orderBy('related_document_date', $orderDir);
+                break;
+            default:
+                $query->orderBy('id', 'desc');
+                break;
         }
 
         $results = $query->skip($start)->take($length)->get();
@@ -83,12 +97,11 @@ class LegalActController extends Controller
         foreach ($results as $i => $act) {
             $latestLog = $act->latestStatusLog;
             $noteText = $latestLog?->executionNote?->note ?? '';
-            $isIcraOlunub = $noteText && mb_stripos($noteText, 'İcra olunub') !== false;
 
-            // Approval-aware status determination
-            $isExecuted = $isIcraOlunub && $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_APPROVED;
-            $isPending = $isIcraOlunub && $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_PENDING;
-            $isRejected = $isIcraOlunub && $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_REJECTED;
+            $isExecuted = $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_APPROVED;
+            $isPending = $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_PENDING;
+            $isRejected = $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_REJECTED;
+            $isPartial = $latestLog?->approval_status === ExecutorStatusLog::APPROVAL_PARTIAL;
 
             $daysLeft = null;
             $rowClass = '';
@@ -97,6 +110,8 @@ class LegalActController extends Controller
                 $rowClass = 'row-executed';
             } elseif ($isPending) {
                 $rowClass = 'row-pending';
+            } elseif ($isPartial) {
+                $rowClass = 'row-partial';
             } elseif ($act->execution_deadline) {
                 $daysLeft = (int) now()->startOfDay()->diffInDays($act->execution_deadline->startOfDay(), false);
                 if ($daysLeft < 0) {
@@ -127,6 +142,11 @@ class LegalActController extends Controller
                     $noteHtml = '<span class="badge bg-warning text-dark">Təsdiq gözləyir</span>';
                 } elseif ($isRejected) {
                     $noteHtml = '<span class="badge bg-danger">Rədd edilib</span>';
+                } elseif ($isPartial) {
+                    $partialLogs = $act->statusLogs()->where('approval_status', 'partial')->with('user')->get();
+                    $submittedNames = $partialLogs->pluck('user.name')->implode(', ');
+                    $noteHtml = '<span class="badge bg-info text-dark">Natamam</span>'
+                        . '<br><small class="text-muted">Göndərən: ' . e($submittedNames) . '</small>';
                 } else {
                     $noteHtml = '<span class="badge bg-secondary">' . e(Str::limit($noteText, 25)) . '</span>';
                 }
@@ -161,6 +181,8 @@ class LegalActController extends Controller
                 'insertedUser' => $act->insertedUser ? $act->insertedUser->name . ' ' . $act->insertedUser->surname : '-',
                 'canEdit' => ($userId === $act->inserted_user_id) || $canManage,
                 'canDelete' => $isAdmin,
+                'hasPendingApproval' => $isPending,
+                'pendingLogId' => $isPending ? $latestLog?->id : null,
             ];
         }
 
@@ -251,7 +273,7 @@ class LegalActController extends Controller
                     'approval_note' => $log->approval_note,
                     'approved_by' => $log->approvedByUser?->full_name,
                     'approved_at' => $log->approved_at?->format('d.m.Y H:i'),
-                    'attachments' => $log->attachments->map(fn ($a) => [
+                    'attachments' => $log->attachments->map(fn($a) => [
                         'id' => $a->id,
                         'name' => $a->original_name,
                         'mime_type' => $a->mime_type,
@@ -358,13 +380,13 @@ class LegalActController extends Controller
     private function applyFilters(Request $request)
     {
         $query = LegalAct::with([
-                'actType',
-                'issuingAuthority',
-                'executors.department',
-                'latestStatusLog.executionNote',
-                'latestStatusLog.approvedByUser',
-                'insertedUser',
-            ])
+            'actType',
+            'issuingAuthority',
+            'executors.department',
+            'latestStatusLog.executionNote',
+            'latestStatusLog.approvedByUser',
+            'insertedUser',
+        ])
             ->active();
 
         if ($request->filled('col.legal_act_number')) {
@@ -435,11 +457,11 @@ class LegalActController extends Controller
                         // Not executed = no approved "İcra olunub"
                         $q->whereDoesntHave('statusLogs')
                             ->orWhereDoesntHave('latestStatusLog', function ($sq) {
-                                $sq->where('approval_status', ExecutorStatusLog::APPROVAL_APPROVED)
-                                   ->whereHas('executionNote', function ($nq) {
-                                       $nq->where('note', 'like', '%İcra olunub%');
-                                   });
-                            });
+                            $sq->where('approval_status', ExecutorStatusLog::APPROVAL_APPROVED)
+                                ->whereHas('executionNote', function ($nq) {
+                                    $nq->where('note', 'like', '%İcra olunub%');
+                                });
+                        });
                     });
             } elseif (in_array($status, ['0day', '1day', '2days', '3days'])) {
                 $days = (int) $status[0];
@@ -450,26 +472,26 @@ class LegalActController extends Controller
                         $q->whereDoesntHave('statusLogs')
                             ->orWhereDoesntHave('latestStatusLog', function ($sq) {
                                 $sq->where('approval_status', ExecutorStatusLog::APPROVAL_APPROVED)
-                                   ->whereHas('executionNote', function ($nq) {
-                                       $nq->where('note', 'like', '%İcra olunub%');
-                                   });
+                                    ->whereHas('executionNote', function ($nq) {
+                                        $nq->where('note', 'like', '%İcra olunub%');
+                                    });
                             });
                     });
             } elseif ($status === 'executed') {
                 // Only approved "İcra olunub"
                 $query->whereHas('latestStatusLog', function ($q) {
                     $q->where('approval_status', ExecutorStatusLog::APPROVAL_APPROVED)
-                      ->whereHas('executionNote', function ($nq) {
-                          $nq->where('note', 'like', '%İcra olunub%');
-                      });
+                        ->whereHas('executionNote', function ($nq) {
+                            $nq->where('note', 'like', '%İcra olunub%');
+                        });
                 });
             } elseif ($status === 'pending') {
                 // Pending approval
                 $query->whereHas('latestStatusLog', function ($q) {
                     $q->where('approval_status', ExecutorStatusLog::APPROVAL_PENDING)
-                      ->whereHas('executionNote', function ($nq) {
-                          $nq->where('note', 'like', '%İcra olunub%');
-                      });
+                        ->whereHas('executionNote', function ($nq) {
+                            $nq->where('note', 'like', '%İcra olunub%');
+                        });
                 });
             }
         }

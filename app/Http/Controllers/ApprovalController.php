@@ -25,7 +25,26 @@ class ApprovalController extends Controller
             ->pluck('id')
             ->toArray();
     }
+    private function getSubmittedByHtml(ExecutorStatusLog $log): string
+    {
+        $allPendingLogs = ExecutorStatusLog::where('legal_act_id', $log->legal_act_id)
+            ->where('approval_status', 'pending')
+            ->with(['user', 'executionNote'])
+            ->get();
 
+        if ($allPendingLogs->count() <= 1) {
+            return e($log->user->name ?? '-');
+        }
+
+        $html = '';
+        foreach ($allPendingLogs as $pLog) {
+            $role = $pLog->user->executorPivot($log->legal_act_id)?->role ?? '';
+            $roleLabel = $role === 'main' ? 'Əsas' : 'Köməkçi';
+            $html .= '<div><strong>' . e($roleLabel) . ':</strong> ' . e($pLog->user->name)
+                . ' <small class="text-muted">(' . e($pLog->executionNote->note ?? '') . ')</small></div>';
+        }
+        return $html;
+    }
     /**
      * List all legal acts with pending approval.
      */
@@ -56,10 +75,14 @@ class ApprovalController extends Controller
 
         // Find ALL pending status logs (not just latest — the pending one might not be the very latest)
         $pendingLogs = ExecutorStatusLog::with([
-                'legalAct.actType', 'legalAct.issuingAuthority',
-                'legalAct.executors.department', 'legalAct.insertedUser',
-                'user', 'executionNote', 'attachments',
-            ])
+            'legalAct.actType',
+            'legalAct.issuingAuthority',
+            'legalAct.executors.department',
+            'legalAct.insertedUser',
+            'user',
+            'executionNote',
+            'attachments',
+        ])
             ->where('approval_status', 'pending')
             ->whereIn('execution_note_id', $icraOlunubIds)
             ->whereHas('legalAct', function ($q) {
@@ -83,7 +106,8 @@ class ApprovalController extends Controller
         $data = [];
         foreach ($results as $i => $log) {
             $act = $log->legalAct;
-            if (!$act) continue;
+            if (!$act)
+                continue;
 
             $mainExecutor = $act->executors->where('pivot.role', 'main')->first();
             $executorHtml = $mainExecutor ? e($mainExecutor->name) : '-';
@@ -102,7 +126,7 @@ class ApprovalController extends Controller
                 'legalActDate' => $act->legal_act_date?->format('d.m.Y') ?? '-',
                 'summary' => Str::limit($act->summary, 60) ?? '-',
                 'executor' => $executorHtml,
-                'submittedBy' => $log->user?->full_name ?? '-',
+                'submittedBy' => $this->getSubmittedByHtml($log),
                 'submittedAt' => $log->created_at?->format('d.m.Y H:i') ?? '-',
                 'customNote' => $log->custom_note ? Str::limit($log->custom_note, 40) : '-',
                 'attachmentCount' => $attachmentCount,
@@ -124,9 +148,14 @@ class ApprovalController extends Controller
     public function show(LegalAct $legalAct)
     {
         $legalAct->load([
-            'actType', 'issuingAuthority', 'executors.department',
-            'statusLogs.executionNote', 'statusLogs.user', 'statusLogs.attachments',
-            'statusLogs.approvedByUser', 'insertedUser',
+            'actType',
+            'issuingAuthority',
+            'executors.department',
+            'statusLogs.executionNote',
+            'statusLogs.user',
+            'statusLogs.attachments',
+            'statusLogs.approvedByUser',
+            'insertedUser',
         ]);
 
         $mainExecutor = $legalAct->executors->where('pivot.role', 'main')->first();

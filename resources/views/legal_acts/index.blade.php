@@ -4,6 +4,18 @@
 
 @push('styles')
     <style>
+        .row-partial td {
+            background-color: #e0f2fe !important;
+        }
+
+        .row-partial:hover td {
+            background-color: #bae6fd !important;
+        }
+
+        .row-partial td:first-child {
+            box-shadow: inset 3px 0 0 #0284c7;
+        }
+
         .row-overdue td {
             background-color: #fef2f2 !important;
         }
@@ -478,20 +490,91 @@
 
             var table = $('#legalActsTable').DataTable({
                 processing: true, serverSide: true,
-                ajax: { url: "{{ route('legal-acts.load') }}", type: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken }, data: function (d) { var f = gfp(); d.col = {}; Object.keys(f).forEach(function (k) { var m = k.match(/^col\[(.+)\]$/); if (m) d.col[m[1]] = f[k]; }); } },
+                ajax: {
+                    url: "{{ route('legal-acts.load') }}",
+                    type: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken },
+                    data: function (d) {
+                        var f = gfp();
+                        d.col = {};
+                        Object.keys(f).forEach(function (k) {
+                            var m = k.match(/^col\[(.+)\]$/);
+                            if (m) d.col[m[1]] = f[k];
+                        });
+                    }
+                },
                 columns: [
-                    { data: 'actType', className: 'text-center', render: function (d) { return (!d || d === '-') ? '-' : '<span class="badge" style="background:var(--accent-dark,#1e3a5f)">' + escapeHtml(d) + '</span>'; } },
-                    { data: 'legalActNumber', className: 'fw-semibold text-center' }, { data: 'legalActDate', className: 'text-center' }, { data: 'issuingAuthority' }, { data: 'summary', className: 'wrap-cell' },
-                    { data: 'taskNumber', className: 'text-center' }, { data: 'taskDescription', className: 'wrap-cell' },
-                    { data: 'executor' }, { data: 'department' }, { data: 'deadlineHtml', className: 'text-center' }, { data: 'noteHtml' },
-                    { data: 'relatedDocNumber', className: 'text-center' }, { data: 'relatedDocDate', className: 'text-center' }, { data: 'insertedUser' },
-                    { data: null, orderable: false, searchable: false, render: function (d) { var h = '<div class="action-btns">'; h += '<button class="btn btn-sm btn-info" title="Bax" onclick="showDetails(' + d.id + ')"><i class="bi bi-eye"></i></button>'; if (d.canEdit) h += '<button class="btn btn-sm btn-warning" title="Redaktə" onclick="editRecord(' + d.id + ')"><i class="bi bi-pencil"></i></button>'; if (d.canDelete) h += '<button class="btn btn-sm btn-danger" title="Sil" onclick="deleteRecord(' + d.id + ')"><i class="bi bi-trash"></i></button>'; return h + '</div>'; } }
+                    {
+                        data: 'actType',
+                        className: 'text-center',
+                        render: function (d) {
+                            return (!d || d === '-') ? '-' : '<span class="badge" style="background:var(--accent-dark,#1e3a5f)">' + escapeHtml(d) + '</span>';
+                        }
+                    },
+                    { data: 'legalActNumber', className: 'fw-semibold text-center' },
+                    { data: 'legalActDate', className: 'text-center' },
+                    { data: 'issuingAuthority' },
+                    { data: 'summary', className: 'wrap-cell' },
+                    { data: 'taskNumber', className: 'text-center' },
+                    { data: 'taskDescription', className: 'wrap-cell' },
+                    { data: 'executor' },
+                    { data: 'department' },
+                    { data: 'deadlineHtml', className: 'text-center' },
+                    { data: 'noteHtml' },
+                    { data: 'relatedDocNumber', className: 'text-center' },
+                    { data: 'relatedDocDate', className: 'text-center' },
+                    { data: 'insertedUser' },
+                    {
+                        data: null, orderable: false,
+                        searchable: false, render: function (d) {
+                            console.log(d);
+
+                            var h = '<div class="action-btns">';
+                            h += '<button class="btn btn-sm btn-info" title="Bax" onclick="showDetails(' + d.id + ')"><i class="bi bi-eye"></i></button>';
+                            if (d.hasPendingApproval) h += '<button class="btn btn-sm btn-success" title="Təsdiq gözləyir" onclick="showApproval(' + d.id + ', ' + d.pendingLogId + ')"><i class="bi bi-check-circle"></i></button>';
+                            if (d.canEdit) h += '<button class="btn btn-sm btn-warning" title="Redaktə" onclick="editRecord(' + d.id + ')"><i class="bi bi-pencil"></i></button>';
+                            if (d.canDelete) h += '<button class="btn btn-sm btn-danger" title="Sil" onclick="deleteRecord(' + d.id + ')"><i class="bi bi-trash"></i></button>';
+                            return h + '</div>';
+                        }
+                    }
                 ],
-                order: [[2, 'desc']], pageLength: 25, lengthMenu: [10, 25, 50, 100], autoWidth: false, orderCellsTop: true,
+                order: [[2, 'desc']],
+                pageLength: 25,
+                lengthMenu: [10, 25, 50, 100],
+                autoWidth: false,
+                orderCellsTop: true,
                 dom: '<"d-flex justify-content-between align-items-center flex-wrap px-3 pt-2"lB>rt<"d-flex justify-content-between align-items-center flex-wrap px-3 pb-2"ip>',
-                buttons: [{ extend: 'colvis', text: '<i class="bi bi-eye me-1"></i> Sütunlar', className: 'btn btn-secondary btn-sm', columns: ':not(:last-child)' }, { text: '<i class="bi bi-file-earmark-excel me-1"></i> Excel', className: 'btn btn-primary btn-sm', action: function () { xf('excel'); } }, { text: '<i class="bi bi-file-earmark-word me-1"></i> Word', className: 'btn btn-info btn-sm', action: function () { xf('word'); } }],
-                language: { paginate: { previous: "&laquo;", next: "&raquo;" }, emptyTable: "Məlumat yoxdur", info: "_START_-_END_ / _TOTAL_", infoEmpty: "Məlumat yoxdur", lengthMenu: "_MENU_ nəticə", processing: "Yüklənir...", zeroRecords: "Tapılmadı" }
-                ,initComplete: function () {
+                buttons: [
+                    {
+                        extend: 'colvis', text: '<i class="bi bi-eye me-1"></i> Sütunlar',
+                        className: 'btn btn-secondary btn-sm',
+                        columns: ':not(:last-child)'
+                    },
+                    {
+                        text: '<i class="bi bi-file-earmark-excel me-1"></i> Excel',
+                        className: 'btn btn-primary btn-sm',
+                        action: function () { xf('excel'); }
+                    },
+                    {
+                        text: '<i class="bi bi-file-earmark-word me-1"></i> Word',
+                        className: 'btn btn-info btn-sm',
+                        action: function () { xf('word'); }
+                    }
+                ],
+                language: {
+                    paginate:
+                    {
+                        previous: "&laquo;",
+                        next: "&raquo;"
+                    },
+                    emptyTable: "Məlumat yoxdur",
+                    info: "_START_-_END_ / _TOTAL_",
+                    infoEmpty: "Məlumat yoxdur",
+                    lengthMenu: "_MENU_ nəticə",
+                    processing: "Yüklənir...",
+                    zeroRecords: "Tapılmadı"
+                },
+                initComplete: function () {
                     var $scrollDiv = $('#legalActsTable').closest('[style*="overflow"]');
                     var $wrapper = $('#legalActsTable_wrapper');
 

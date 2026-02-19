@@ -25,10 +25,10 @@ class ExecutorStatusLog extends Model
     ];
 
     // ─── Approval status constants ──────────────────────────────
-    const APPROVAL_PENDING  = 'pending';
+    const APPROVAL_PENDING = 'pending';
     const APPROVAL_APPROVED = 'approved';
     const APPROVAL_REJECTED = 'rejected';
-
+    const APPROVAL_PARTIAL = 'partial';
     // ─── Relationships ──────────────────────────────────────────
 
     public function legalAct()
