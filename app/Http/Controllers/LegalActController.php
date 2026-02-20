@@ -9,6 +9,7 @@ use App\Models\Executor;
 use App\Models\ExecutionNote;
 use App\Models\ExecutorStatusLog;
 use App\Models\Department;
+use Illuminate\Validation\Rule;
 use App\Exports\LegalActsExport;
 use App\Services\LegalActWordExportService;
 use Illuminate\Http\Request;
@@ -260,7 +261,14 @@ class LegalActController extends Controller
             'issued_by_id' => 'required|exists:issuing_authorities,id',
             'main_executor_id' => 'required|exists:executors,id',
             'helper_executor_id' => 'nullable|exists:executors,id|different:main_executor_id',
-            'legal_act_number' => 'required|string|max:255|unique:legal_acts,legal_act_number',
+            'legal_act_number' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('legal_acts')->where(function ($query) use ($request) {
+                    return $query->where('act_type_id', $request->act_type_id);
+                }),
+            ],
             'legal_act_date' => 'required|date',
             'summary' => 'required|string',
             'task_number' => 'nullable|string|max:255',
@@ -268,6 +276,40 @@ class LegalActController extends Controller
             'execution_deadline' => 'nullable|date',
             'related_document_number' => 'nullable|string|max:255',
             'related_document_date' => 'nullable|date',
+        ], [
+            'act_type_id.required' => 'Akt növü mütləq seçilməlidir.',
+            'act_type_id.exists' => 'Seçilmiş akt növü mövcud deyil.',
+            'legal_act_number.unique' => 'Bu akt növü üzrə eyni nömrəli hüquqi akt artıq mövcuddur.',
+            'issued_by_id.required' => 'Verən orqan mütləq seçilməlidir.',
+            'issued_by_id.exists' => 'Seçilmiş verən orqan mövcud deyil.',
+
+            'main_executor_id.required' => 'Əsas icraçı mütləq seçilməlidir.',
+            'main_executor_id.exists' => 'Seçilmiş əsas icraçı mövcud deyil.',
+
+            'helper_executor_id.exists' => 'Seçilmiş köməkçi icraçı mövcud deyil.',
+            'helper_executor_id.different' => 'Köməkçi icraçı əsas icraçıdan fərqli olmalıdır.',
+
+            'legal_act_number.required' => 'Hüquqi aktın nömrəsi mütləq daxil edilməlidir.',
+            'legal_act_number.string' => 'Hüquqi aktın nömrəsi mətn formatında olmalıdır.',
+            'legal_act_number.max' => 'Hüquqi aktın nömrəsi 255 simvoldan çox ola bilməz.',
+
+            'legal_act_date.required' => 'Hüquqi aktın tarixi mütləq daxil edilməlidir.',
+            'legal_act_date.date' => 'Hüquqi aktın tarixi düzgün tarix formatında olmalıdır.',
+
+            'summary.required' => 'Xülasə mütləq daxil edilməlidir.',
+            'summary.string' => 'Xülasə mətn formatında olmalıdır.',
+
+            'task_number.string' => 'Tapşırıq nömrəsi mətn formatında olmalıdır.',
+            'task_number.max' => 'Tapşırıq nömrəsi 255 simvoldan çox ola bilməz.',
+
+            'task_description.string' => 'Tapşırığın təsviri mətn formatında olmalıdır.',
+
+            'execution_deadline.date' => 'İcra müddəti düzgün tarix formatında olmalıdır.',
+
+            'related_document_number.string' => 'Əlaqəli sənədin nömrəsi mətn formatında olmalıdır.',
+            'related_document_number.max' => 'Əlaqəli sənədin nömrəsi 255 simvoldan çox ola bilməz.',
+
+            'related_document_date.date' => 'Əlaqəli sənədin tarixi düzgün tarix formatında olmalıdır.',
         ]);
 
         $actData = collect($validated)->except(['main_executor_id', 'helper_executor_id'])->toArray();
@@ -380,20 +422,52 @@ class LegalActController extends Controller
         }
 
         $validated = $request->validate([
-            'act_type_id' => 'required|exists:act_types,id',
-            'issued_by_id' => 'required|exists:issuing_authorities,id',
-            'main_executor_id' => 'required|exists:executors,id',
-            'helper_executor_id' => 'nullable|exists:executors,id|different:main_executor_id',
-            'legal_act_number' => 'required|string|max:255|unique:legal_acts,legal_act_number,' . $legalAct->id,
-            'legal_act_date' => 'required|date',
-            'summary' => 'required|string',
-            'task_number' => 'nullable|string|max:255',
-            'task_description' => 'nullable|string',
-            'execution_deadline' => 'nullable|date',
-            'related_document_number' => 'nullable|string|max:255',
-            'related_document_date' => 'nullable|date',
-        ]);
-
+    'act_type_id' => 'required|exists:act_types,id',
+    'issued_by_id' => 'required|exists:issuing_authorities,id',
+    'main_executor_id' => 'required|exists:executors,id',
+    'helper_executor_id' => 'nullable|exists:executors,id|different:main_executor_id',
+    'legal_act_number' => [
+        'required',
+        'string',
+        'max:255',
+        Rule::unique('legal_acts')
+            ->where(function ($query) use ($request) {
+                return $query->where('act_type_id', $request->act_type_id);
+            })
+            ->ignore($legalAct->id),
+    ],
+    'legal_act_date' => 'required|date',
+    'summary' => 'required|string',
+    'task_number' => 'nullable|string|max:255',
+    'task_description' => 'nullable|string',
+    'execution_deadline' => 'nullable|date',
+    'related_document_number' => 'nullable|string|max:255',
+    'related_document_date' => 'nullable|date',
+], [
+    'act_type_id.required'             => 'Akt növü mütləq seçilməlidir.',
+    'act_type_id.exists'               => 'Seçilmiş akt növü mövcud deyil.',
+    'issued_by_id.required'            => 'Verən orqan mütləq seçilməlidir.',
+    'issued_by_id.exists'              => 'Kimin qəbul etdiyi seçilməyib.',
+    'main_executor_id.required'        => 'Əsas icraçı mütləq seçilməlidir.',
+    'main_executor_id.exists'          => 'Seçilmiş əsas icraçı mövcud deyil.',
+    'helper_executor_id.exists'        => 'Seçilmiş köməkçi icraçı mövcud deyil.',
+    'helper_executor_id.different'     => 'Köməkçi icraçı əsas icraçıdan fərqli olmalıdır.',
+    'legal_act_number.required'        => 'Hüquqi aktın nömrəsi mütləq daxil edilməlidir.',
+    'legal_act_number.string'          => 'Hüquqi aktın nömrəsi mətn formatında olmalıdır.',
+    'legal_act_number.max'             => 'Hüquqi aktın nömrəsi 255 simvoldan çox ola bilməz.',
+    'legal_act_number.unique'          => 'Bu akt növü üzrə eyni nömrəli hüquqi akt artıq mövcuddur.',
+    'legal_act_date.required'          => 'Hüquqi aktın tarixi mütləq daxil edilməlidir.',
+    'legal_act_date.date'              => 'Hüquqi aktın tarixi düzgün tarix formatında olmalıdır.',
+    'summary.required'                 => 'Xülasə mütləq daxil edilməlidir.',
+    'summary.string'                   => 'Xülasə mətn formatında olmalıdır.',
+    'task_number.string'               => 'Tapşırıq nömrəsi mətn formatında olmalıdır.',
+    'task_number.max'                  => 'Tapşırıq nömrəsi 255 simvoldan çox ola bilməz.',
+    'task_description.string'          => 'Tapşırığın təsviri mətn formatında olmalıdır.',
+    'execution_deadline.date'          => 'İcra müddəti düzgün tarix formatında olmalıdır.',
+    'related_document_number.string'   => 'Əlaqəli sənədin nömrəsi mətn formatında olmalıdır.',
+    'related_document_number.max'      => 'Əlaqəli sənədin nömrəsi 255 simvoldan çox ola bilməz.',
+    'related_document_date.date'       => 'Əlaqəli sənədin tarixi düzgün tarix formatında olmalıdır.',
+]);
         $actData = collect($validated)->except(['main_executor_id', 'helper_executor_id'])->toArray();
         $legalAct->update($actData);
 
