@@ -39,7 +39,7 @@ class ApprovalController extends Controller
         $html = '';
         foreach ($allPendingLogs as $pLog) {
             $role = $pLog->user->executorPivot($log->legal_act_id)?->role ?? '';
-            $roleLabel = $role === 'main' ? 'Əsas' : 'Köməkçi';
+            $roleLabel = $role === 'main' ? 'Əsas' : 'Digər';
             $html .= '<div><strong>' . e($roleLabel) . ':</strong> ' . e($pLog->user->name)
                 . ' <small class="text-muted">(' . e($pLog->executionNote->note ?? '') . ')</small></div>';
         }

@@ -17,7 +17,7 @@ class User extends Authenticatable
         'surname',
         'user_role',
         'executor_id',
-        'helper_name',
+        'department_id',
         'is_deleted',
     ];
 
@@ -94,6 +94,11 @@ class User extends Authenticatable
     public function getFullNameAttribute()
     {
         return "{$this->name} {$this->surname}";
+    }
+
+    public function department()
+    {
+        return $this->belongsTo(Department::class);
     }
 
     public function executorPivot($legalActId)

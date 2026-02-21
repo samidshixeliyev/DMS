@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="page-header">
-    <h2><i class="bi bi-diagram-3 me-2"></i>Şöbələr</h2>
+    <h2><i class="bi bi-diagram-3 me-2"></i>İdarələr</h2>
     @if(in_array(auth()->user()->user_role, ['admin', 'manager']))
     <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createModal">
         <i class="bi bi-plus-circle me-1"></i> Yeni əlavə et

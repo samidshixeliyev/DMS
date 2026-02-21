@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with('executor.department')->active()->orderBy('id', 'desc')->paginate(20);
+        $users = User::with(['executor.department', 'department'])->active()->orderBy('id', 'desc')->paginate(20);
         $executors = Executor::with('department')->active()->get();
         return view('users.index', compact('users', 'executors'));
     }
@@ -26,7 +26,7 @@ class UserController extends Controller
             'password' => 'required|string|min:6|confirmed',
             'user_role' => 'required|in:admin,manager,user,executor',
             'executor_id' => 'nullable|exists:executors,id',
-            'helper_name' => 'nullable|string|max:255',
+            'department_id' => 'nullable|exists:departments,id',
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
@@ -38,7 +38,7 @@ class UserController extends Controller
 
     public function show(User $user)
     {
-        $user->load('executor.department');
+        $user->load('executor.department', 'department');
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
@@ -47,7 +47,7 @@ class UserController extends Controller
             'user_role' => $user->user_role,
             'executor_name' => $user->executor?->name,
             'executor_department' => $user->executor?->department?->name,
-            'helper_name' => $user->helper_name,
+            'department_name' => $user->department?->name,
             'created_at' => $user->created_at?->format('d.m.Y H:i'),
         ]);
     }
@@ -62,7 +62,8 @@ class UserController extends Controller
             'username' => $user->username,
             'user_role' => $user->user_role,
             'executor_id' => $user->executor_id,
-            'helper_name' => $user->helper_name,
+            'department_id' => $user->department_id,
+            'departments' => \App\Models\Department::active()->get(),
             'executors' => $executors,
         ]);
     }
@@ -76,7 +77,7 @@ class UserController extends Controller
             'password' => 'nullable|string|min:6|confirmed',
             'user_role' => 'required|in:admin,manager,user,executor',
             'executor_id' => 'nullable|exists:executors,id',
-            'helper_name' => 'nullable|string|max:255',
+            'department_id' => 'nullable|exists:departments,id',
         ]);
 
         if (!empty($validated['password'])) {

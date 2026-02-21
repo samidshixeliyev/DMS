@@ -60,7 +60,7 @@ class ExecutorDashboardController extends Controller
         $baseQuery = LegalAct::active()->whereHas('executors', fn($q) => $q->where('executors.id', $executorId));
         $totalRecords = (clone $baseQuery)->count();
 
-        $query = LegalAct::with(['actType', 'issuingAuthority', 'executors.department', 'latestStatusLog.executionNote', 'latestStatusLog.approvedByUser', 'insertedUser'])
+        $query = LegalAct::with(['actType', 'issuingAuthority', 'executors.department', 'latestStatusLog.executionNote', 'latestStatusLog.approvedByUser', 'statusLogs.executionNote', 'statusLogs.approvedByUser', 'insertedUser'])
             ->active()->whereHas('executors', fn($q) => $q->where('executors.id', $executorId));
 
         if ($request->filled('col.legal_act_number')) {
@@ -89,12 +89,18 @@ class ExecutorDashboardController extends Controller
 
         foreach ($results as $i => $act) {
             $latestLog = $act->latestStatusLog;
+            $myLatestLog = $act->statusLogs->where('user_id', $user->id)->sortByDesc('id')->first();
+
             $isIcraOlunub = $latestLog && $this->isIcraOlunubNote($latestLog->execution_note_id);
-            $noteText = $latestLog?->executionNote?->note ?? '';
+            $myIsIcraOlunub = $myLatestLog && $this->isIcraOlunubNote($myLatestLog->execution_note_id);
+            $noteText = $myLatestLog?->executionNote?->note ?? '';
 
             $isExecuted = $isIcraOlunub && $latestLog->approval_status === 'approved';
             $isPending = $isIcraOlunub && $latestLog->approval_status === 'pending';
-            $isRejected = $isIcraOlunub && $latestLog->approval_status === 'rejected';
+
+            $myIsExecuted = $myIsIcraOlunub && $myLatestLog->approval_status === 'approved';
+            $myIsPending = $myIsIcraOlunub && in_array($myLatestLog->approval_status, ['pending', 'partial']);
+            $myIsRejected = $myIsIcraOlunub && $myLatestLog->approval_status === 'rejected';
 
             $daysLeft = null;
             $rowClass = '';
@@ -119,24 +125,24 @@ class ExecutorDashboardController extends Controller
             }
 
             $statusHtml = '-';
-            if ($latestLog) {
-                if ($isExecuted) {
+            if ($myLatestLog) {
+                if ($myIsExecuted) {
                     $statusHtml = '<span class="badge bg-success">İcra olunub ✓</span>';
-                } elseif ($isPending) {
+                } elseif ($myIsPending) {
                     $statusHtml = '<span class="badge bg-warning text-dark">Təsdiq gözləyir</span>';
-                } elseif ($isRejected) {
+                } elseif ($myIsRejected) {
                     $statusHtml = '<span class="badge bg-danger">Rədd edilib</span>';
-                    if ($latestLog->approval_note)
-                        $statusHtml .= '<br><small class="text-danger">' . e(Str::limit($latestLog->approval_note, 30)) . '</small>';
+                    if ($myLatestLog->approval_note)
+                        $statusHtml .= '<br><small class="text-danger">' . e(Str::limit($myLatestLog->approval_note, 30)) . '</small>';
                 } else {
                     $statusHtml = '<span class="badge bg-secondary">' . e(Str::limit($noteText, 25)) . '</span>';
                 }
-                if ($latestLog->custom_note && !$isRejected)
-                    $statusHtml .= '<br><small class="text-muted">' . e(Str::limit($latestLog->custom_note, 30)) . '</small>';
+                if ($myLatestLog->custom_note && !$myIsRejected)
+                    $statusHtml .= '<br><small class="text-muted">' . e(Str::limit($myLatestLog->custom_note, 30)) . '</small>';
             }
 
             $pivot = $act->executors->where('id', $user->executor_id)->first()?->pivot;
-            $roleHtml = $pivot?->role === 'main' ? '<span class="badge bg-primary">Əsas</span>' : '<span class="badge bg-info">Köməkçi</span>';
+            $roleHtml = $pivot?->role === 'main' ? '<span class="badge bg-primary">Əsas</span>' : '<span class="badge bg-info">Digər</span>';
 
             $data[] = [
                 'DT_RowClass' => $rowClass,
@@ -151,7 +157,7 @@ class ExecutorDashboardController extends Controller
                 'deadlineHtml' => $deadlineHtml,
                 'statusHtml' => $statusHtml,
                 'roleHtml' => $roleHtml,
-                'canChangeStatus' => !$isExecuted && !$isPending,
+                'canChangeStatus' => !$myIsExecuted && !$myIsPending,
             ];
         }
 

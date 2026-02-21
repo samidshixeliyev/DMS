@@ -192,7 +192,6 @@
         .form-select {
             border: 1.5px solid var(--border);
             border-radius: var(--radius-sm);
-            padding: 0.5rem 0.75rem;
             font-size: 0.875rem;
             transition: all 0.2s ease;
         }
@@ -689,9 +688,9 @@
                         class="nav-link-inner {{ request()->routeIs('departments.*') ? 'sidebar-nav-active' : '' }}"
                         style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.75rem; border-radius:8px; font-size:0.82rem; font-weight:500; color:rgba(255,255,255,0.7); text-decoration:none; transition:all 0.2s; border-left:3px solid transparent;">
                         <i class="bi bi-diagram-3" style="font-size:1rem; width:20px; text-align:center;"></i>
-                        <span class="sidebar-text">Şöbələr</span>
+                        <span class="sidebar-text">İdarələr</span>
                     </a>
-                    <span class="sidebar-tooltip">Şöbələr</span>
+                    <span class="sidebar-tooltip">İdarələr</span>
                 </div>
 
                 <div class="nav-item-wrapper" style="margin-bottom:2px;">

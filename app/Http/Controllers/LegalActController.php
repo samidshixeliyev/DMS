@@ -55,7 +55,24 @@ class LegalActController extends Controller
         $start = $request->input('start', 0);
         $length = $request->input('length', 25);
 
+        $user = auth()->user();
+
         $totalQuery = LegalAct::active();
+        $user = auth()->user();
+        if (!$user->canManage()) {
+            $totalQuery->where(function ($q) use ($user) {
+                if ($user->executor_id) {
+                    $q->whereHas('executors', function ($sq) use ($user) {
+                        $sq->where('executors.id', $user->executor_id);
+                    });
+                }
+                if ($user->department_id) {
+                    $q->orWhereHas('executors', function ($sq) use ($user) {
+                        $sq->where('executors.department_id', $user->department_id);
+                    });
+                }
+            });
+        }
         $totalRecords = (clone $totalQuery)->count();
 
         $query = $this->applyFilters($request);
@@ -65,6 +82,9 @@ class LegalActController extends Controller
         $orderDir = $request->input('order.0.dir', 'desc') === 'asc' ? 'asc' : 'desc';
 
         switch ($orderCol) {
+            case 0:
+                $query->orderBy('created_at', $orderDir);
+                break;
             case 1:
                 $query->orderBy('legal_act_number', $orderDir);
                 break;
@@ -99,11 +119,23 @@ class LegalActController extends Controller
             $mainExecutor = $act->executors->where('pivot.role', 'main')->first();
             $helperExecutor = $act->executors->where('pivot.role', 'helper')->first();
 
-            $executorHtml = $mainExecutor ? e($mainExecutor->name) : '-';
-            if ($helperExecutor) {
-                $executorHtml .= '<br><small class="text-muted">Köməkçi: ' . e($helperExecutor->name) . '</small>';
+            $executorHtml = '-';
+            if ($mainExecutor) {
+                $executorHtml = '<div class="mb-1"><small class="text-muted fw-semibold">Əsas:</small> ' . e($mainExecutor->name) . '</div>';
+                if ($helperExecutor) {
+                    $executorHtml .= '<hr class="my-1" style="opacity:0.25">';
+                    $executorHtml .= '<div class="mb-1"><small class="text-muted fw-semibold">Digər:</small> ' . e($helperExecutor->name) . '</div>';
+                }
             }
-            $departmentName = $mainExecutor?->department?->name ?? '-';
+
+            $departmentHtml = '-';
+            if ($mainExecutor) {
+                $departmentHtml = '<div class="mb-1"><small class="text-muted fw-semibold">Əsas:</small> ' . e($mainExecutor->department->name ?? '-') . '</div>';
+                if ($helperExecutor) {
+                    $departmentHtml .= '<hr class="my-1" style="opacity:0.25">';
+                    $departmentHtml .= '<div class="mb-1"><small class="text-muted fw-semibold">Digər:</small> ' . e($helperExecutor->department->name ?? '-') . '</div>';
+                }
+            }
 
             $executorLogMap = [];
             foreach ($act->statusLogs as $log) {
@@ -126,7 +158,7 @@ class LegalActController extends Controller
                 $executorsToShow[] = ['executor' => $mainExecutor, 'label' => 'Əsas'];
             }
             if ($helperExecutor) {
-                $executorsToShow[] = ['executor' => $helperExecutor, 'label' => 'Köməkçi'];
+                $executorsToShow[] = ['executor' => $helperExecutor, 'label' => 'Digər'];
             }
 
             if (count($executorsToShow) > 0) {
@@ -233,7 +265,7 @@ class LegalActController extends Controller
                 'taskNumber' => $act->task_number ?? '-',
                 'taskDescription' => Str::limit($act->task_description, 60) ?: '-',
                 'executor' => $executorHtml,
-                'department' => $departmentName,
+                'department' => $departmentHtml,
                 'deadlineHtml' => $deadlineHtml,
                 'noteHtml' => $noteHtml,
                 'relatedDocNumber' => $act->related_document_number ?? '-',
@@ -286,8 +318,8 @@ class LegalActController extends Controller
             'main_executor_id.required' => 'Əsas icraçı mütləq seçilməlidir.',
             'main_executor_id.exists' => 'Seçilmiş əsas icraçı mövcud deyil.',
 
-            'helper_executor_id.exists' => 'Seçilmiş köməkçi icraçı mövcud deyil.',
-            'helper_executor_id.different' => 'Köməkçi icraçı əsas icraçıdan fərqli olmalıdır.',
+            'helper_executor_id.exists' => 'Seçilmiş Digər icraçı mövcud deyil.',
+            'helper_executor_id.different' => 'Digər icraçı əsas icraçıdan fərqli olmalıdır.',
 
             'legal_act_number.required' => 'Hüquqi aktın nömrəsi mütləq daxil edilməlidir.',
             'legal_act_number.string' => 'Hüquqi aktın nömrəsi mətn formatında olmalıdır.',
@@ -328,17 +360,21 @@ class LegalActController extends Controller
 
     public function show(LegalAct $legalAct)
     {
+        $user = auth()->user();
+        if ($user->role === 'executor') {
+            $isAssigned = $legalAct->executors()->where('executor_id', $user->executor_id)->exists();
+            if (!$isAssigned) {
+                abort(403);
+            }
+        }
+
         $legalAct->load([
             'actType',
             'issuingAuthority',
             'executors.department',
             'latestStatusLog.executionNote',
-            'statusLogs.executionNote',
-            'statusLogs.user',
-            'statusLogs.attachments',
-            'statusLogs.approvedByUser',
             'statusLogs' => function ($q) {
-                $q->with('executionNote', 'user');
+                $q->with(['executionNote', 'user', 'attachments', 'approvedByUser']);
             },
             'executors.users',
             'attachments.user',
@@ -390,6 +426,14 @@ class LegalActController extends Controller
 
     public function edit(LegalAct $legalAct)
     {
+        $user = auth()->user();
+        if ($user->role === 'executor') {
+            $isAssigned = $legalAct->executors()->where('executor_id', $user->executor_id)->exists();
+            if (!$isAssigned) {
+                abort(403);
+            }
+        }
+
         $legalAct->load('executors');
 
         $mainExecutorId = $legalAct->executors->where('pivot.role', 'main')->first()?->id;
@@ -422,52 +466,52 @@ class LegalActController extends Controller
         }
 
         $validated = $request->validate([
-    'act_type_id' => 'required|exists:act_types,id',
-    'issued_by_id' => 'required|exists:issuing_authorities,id',
-    'main_executor_id' => 'required|exists:executors,id',
-    'helper_executor_id' => 'nullable|exists:executors,id|different:main_executor_id',
-    'legal_act_number' => [
-        'required',
-        'string',
-        'max:255',
-        Rule::unique('legal_acts')
-            ->where(function ($query) use ($request) {
-                return $query->where('act_type_id', $request->act_type_id);
-            })
-            ->ignore($legalAct->id),
-    ],
-    'legal_act_date' => 'required|date',
-    'summary' => 'required|string',
-    'task_number' => 'nullable|string|max:255',
-    'task_description' => 'nullable|string',
-    'execution_deadline' => 'nullable|date',
-    'related_document_number' => 'nullable|string|max:255',
-    'related_document_date' => 'nullable|date',
-], [
-    'act_type_id.required'             => 'Akt növü mütləq seçilməlidir.',
-    'act_type_id.exists'               => 'Seçilmiş akt növü mövcud deyil.',
-    'issued_by_id.required'            => 'Verən orqan mütləq seçilməlidir.',
-    'issued_by_id.exists'              => 'Kimin qəbul etdiyi seçilməyib.',
-    'main_executor_id.required'        => 'Əsas icraçı mütləq seçilməlidir.',
-    'main_executor_id.exists'          => 'Seçilmiş əsas icraçı mövcud deyil.',
-    'helper_executor_id.exists'        => 'Seçilmiş köməkçi icraçı mövcud deyil.',
-    'helper_executor_id.different'     => 'Köməkçi icraçı əsas icraçıdan fərqli olmalıdır.',
-    'legal_act_number.required'        => 'Hüquqi aktın nömrəsi mütləq daxil edilməlidir.',
-    'legal_act_number.string'          => 'Hüquqi aktın nömrəsi mətn formatında olmalıdır.',
-    'legal_act_number.max'             => 'Hüquqi aktın nömrəsi 255 simvoldan çox ola bilməz.',
-    'legal_act_number.unique'          => 'Bu akt növü üzrə eyni nömrəli hüquqi akt artıq mövcuddur.',
-    'legal_act_date.required'          => 'Hüquqi aktın tarixi mütləq daxil edilməlidir.',
-    'legal_act_date.date'              => 'Hüquqi aktın tarixi düzgün tarix formatında olmalıdır.',
-    'summary.required'                 => 'Xülasə mütləq daxil edilməlidir.',
-    'summary.string'                   => 'Xülasə mətn formatında olmalıdır.',
-    'task_number.string'               => 'Tapşırıq nömrəsi mətn formatında olmalıdır.',
-    'task_number.max'                  => 'Tapşırıq nömrəsi 255 simvoldan çox ola bilməz.',
-    'task_description.string'          => 'Tapşırığın təsviri mətn formatında olmalıdır.',
-    'execution_deadline.date'          => 'İcra müddəti düzgün tarix formatında olmalıdır.',
-    'related_document_number.string'   => 'Əlaqəli sənədin nömrəsi mətn formatında olmalıdır.',
-    'related_document_number.max'      => 'Əlaqəli sənədin nömrəsi 255 simvoldan çox ola bilməz.',
-    'related_document_date.date'       => 'Əlaqəli sənədin tarixi düzgün tarix formatında olmalıdır.',
-]);
+            'act_type_id' => 'required|exists:act_types,id',
+            'issued_by_id' => 'required|exists:issuing_authorities,id',
+            'main_executor_id' => 'required|exists:executors,id',
+            'helper_executor_id' => 'nullable|exists:executors,id|different:main_executor_id',
+            'legal_act_number' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('legal_acts')
+                    ->where(function ($query) use ($request) {
+                        return $query->where('act_type_id', $request->act_type_id);
+                    })
+                    ->ignore($legalAct->id),
+            ],
+            'legal_act_date' => 'required|date',
+            'summary' => 'required|string',
+            'task_number' => 'nullable|string|max:255',
+            'task_description' => 'nullable|string',
+            'execution_deadline' => 'nullable|date',
+            'related_document_number' => 'nullable|string|max:255',
+            'related_document_date' => 'nullable|date',
+        ], [
+            'act_type_id.required' => 'Akt növü mütləq seçilməlidir.',
+            'act_type_id.exists' => 'Seçilmiş akt növü mövcud deyil.',
+            'issued_by_id.required' => 'Verən orqan mütləq seçilməlidir.',
+            'issued_by_id.exists' => 'Kimin qəbul etdiyi seçilməyib.',
+            'main_executor_id.required' => 'Əsas icraçı mütləq seçilməlidir.',
+            'main_executor_id.exists' => 'Seçilmiş əsas icraçı mövcud deyil.',
+            'helper_executor_id.exists' => 'Seçilmiş Digər icraçı mövcud deyil.',
+            'helper_executor_id.different' => 'Digər icraçı əsas icraçıdan fərqli olmalıdır.',
+            'legal_act_number.required' => 'Hüquqi aktın nömrəsi mütləq daxil edilməlidir.',
+            'legal_act_number.string' => 'Hüquqi aktın nömrəsi mətn formatında olmalıdır.',
+            'legal_act_number.max' => 'Hüquqi aktın nömrəsi 255 simvoldan çox ola bilməz.',
+            'legal_act_number.unique' => 'Bu akt növü üzrə eyni nömrəli hüquqi akt artıq mövcuddur.',
+            'legal_act_date.required' => 'Hüquqi aktın tarixi mütləq daxil edilməlidir.',
+            'legal_act_date.date' => 'Hüquqi aktın tarixi düzgün tarix formatında olmalıdır.',
+            'summary.required' => 'Xülasə mütləq daxil edilməlidir.',
+            'summary.string' => 'Xülasə mətn formatında olmalıdır.',
+            'task_number.string' => 'Tapşırıq nömrəsi mətn formatında olmalıdır.',
+            'task_number.max' => 'Tapşırıq nömrəsi 255 simvoldan çox ola bilməz.',
+            'task_description.string' => 'Tapşırığın təsviri mətn formatında olmalıdır.',
+            'execution_deadline.date' => 'İcra müddəti düzgün tarix formatında olmalıdır.',
+            'related_document_number.string' => 'Əlaqəli sənədin nömrəsi mətn formatında olmalıdır.',
+            'related_document_number.max' => 'Əlaqəli sənədin nömrəsi 255 simvoldan çox ola bilməz.',
+            'related_document_date.date' => 'Əlaqəli sənədin tarixi düzgün tarix formatında olmalıdır.',
+        ]);
         $actData = collect($validated)->except(['main_executor_id', 'helper_executor_id'])->toArray();
         $legalAct->update($actData);
 
@@ -527,8 +571,23 @@ class LegalActController extends Controller
             },
             'executors.users',
             'insertedUser',
-        ])
-            ->active();
+        ])->active();
+
+        if (!auth()->user()->canManage()) {
+            $user = auth()->user();
+            $query->where(function ($q) use ($user) {
+                if ($user->executor_id) {
+                    $q->whereHas('executors', function ($sq) use ($user) {
+                        $sq->where('executors.id', $user->executor_id);
+                    });
+                }
+                if ($user->department_id) {
+                    $q->orWhereHas('executors', function ($sq) use ($user) {
+                        $sq->where('executors.department_id', $user->department_id);
+                    });
+                }
+            });
+        }
 
         if ($request->filled('col.legal_act_number')) {
             $terms = preg_split('/\s+/', trim($request->input('col.legal_act_number')));

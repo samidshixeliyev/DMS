@@ -436,7 +436,7 @@
                 + '<tr><th>Qısa məzmun</th><td style="white-space:pre-wrap">' + escapeHtml(data.summary || '-') + '</td></tr>'
                 + '<tr><th>Kim qəbul edib</th><td>' + escapeHtml(data.issuing_authority || '-') + '</td></tr>'
                 + '<tr><th>Əsas icraçı</th><td>' + escapeHtml(data.main_executor || '-') + (data.main_executor_department ? ' <small>(' + escapeHtml(data.main_executor_department) + ')</small>' : '') + '</td></tr>'
-                + '<tr><th>Köməkçi icraçı</th><td>' + escapeHtml(data.helper_executor || '-') + (data.helper_executor_department ? ' <small>(' + escapeHtml(data.helper_executor_department) + ')</small>' : '') + '</td></tr>'
+                + '<tr><th>Digər icraçı</th><td>' + escapeHtml(data.helper_executor || '-') + (data.helper_executor_department ? ' <small>(' + escapeHtml(data.helper_executor_department) + ')</small>' : '') + '</td></tr>'
                 + '<tr><th>Tapşırıq №</th><td>' + escapeHtml(data.task_number || '-') + '</td></tr>'
                 + '<tr><th>Tapşırıq</th><td style="white-space:pre-wrap">' + escapeHtml(data.task_description || '-') + '</td></tr>'
                 + '<tr><th>İcra müddəti</th><td>' + escapeHtml(data.execution_deadline || '-') + '</td></tr>'
